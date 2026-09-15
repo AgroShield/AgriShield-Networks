@@ -9,8 +9,10 @@
 //!
 //! ## Invariants
 //! 1. Settlement is decided only by finalized oracle readings whose timestamp
-//!    falls within `[coverage_start, coverage_end]`. A reading published before
-//!    cover began, or after it closed, can never trigger a payment.
+//!    falls inside the half-open cover window `[coverage_start, coverage_end)`.
+//!    A reading published before cover began, or after it closed, can never
+//!    trigger a payment — the instant where two adjoining windows meet belongs
+//!    to the later policy alone.
 //! 2. The registry marks a policy `Settled` only *after* the pool has paid.
 //!    Doing it the other way round would let a failed transfer leave a farmer
 //!    holding a settled, worthless policy.
@@ -171,11 +173,16 @@ impl PayoutEngine {
     /// for the region's readings to age out of the oracle's bounded history.
     ///
     /// The window is half-open, so cover has ended the instant the clock reaches
-    /// `coverage_end` — the same point at which [`Self::settle_policy`] stops
-    /// reporting `Pending` — and from there no reading can ever qualify.
+    /// `coverage_end` and no reading from there on can ever qualify. Retiring
+    /// the policy waits one second longer than that: the registry permits expiry
+    /// only once the clock is *past* the window, so a call at exactly
+    /// `coverage_end` is reported as [`Error::CoverageStillOpen`] instead of
+    /// being forwarded as a transition the registry would reject.
+    /// [`Self::settle_policy`] reports `Pending` over that same second, so the
+    /// preview and the settlement keep agreeing.
     pub fn expire_policy(env: Env, policy_id: u64) -> Result<(), Error> {
         let policy = load_active_policy(&env, policy_id)?;
-        if env.ledger().timestamp() < policy.coverage_end {
+        if env.ledger().timestamp() <= policy.coverage_end {
             return Err(Error::CoverageStillOpen);
         }
         expire(&env, &policy)

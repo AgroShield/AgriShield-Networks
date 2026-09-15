@@ -190,6 +190,47 @@ fn expiring_before_the_window_closes_is_rejected() {
     w.engine_client().expire_policy(&policy_id);
 }
 
+#[test]
+fn settling_at_the_closing_instant_reports_pending_instead_of_failing() {
+    let w = setup();
+    let policy_id = w.create_default_policy();
+    w.publish(900, WINDOW_OPEN + DAY);
+    w.at(WINDOW_CLOSE);
+
+    // At exactly `coverage_end` the policy can never pay, but the registry's
+    // expiry gate is still shut, and a settlement that claimed `Expired` here
+    // would be announcing a transition that the registry then refuses. The two
+    // sides have to agree, so the engine reports the truth: nothing is due yet.
+    assert_eq!(
+        w.engine_client().evaluate(&policy_id).status,
+        SettlementStatus::Pending
+    );
+    assert_eq!(w.settle(policy_id).status, SettlementStatus::Pending);
+    assert!(w.registry_client().is_active(&policy_id));
+    assert_eq!(w.pool_client().reserves(), super::CAPITAL);
+
+    // One second later the same call retires the policy, and its capital with it.
+    w.at(WINDOW_CLOSE + 1);
+    assert_eq!(w.settle(policy_id).status, SettlementStatus::Expired);
+    assert_eq!(
+        w.registry_client().get_policy(&policy_id).status,
+        RegistryStatus::Expired
+    );
+}
+
+#[test]
+#[should_panic(expected = "Error(Contract, #13)")]
+fn expiring_at_the_closing_instant_is_still_too_early() {
+    let w = setup();
+    let policy_id = w.create_default_policy();
+    w.publish(900, WINDOW_OPEN + DAY);
+    w.at(WINDOW_CLOSE);
+
+    // Deferring to the registry rather than forwarding a call that would be
+    // rejected keeps the engine's error a typed "not yet" for the keeper.
+    w.engine_client().expire_policy(&policy_id);
+}
+
 // ---------------------------------------------------------------------------
 // The read-only preview
 // ---------------------------------------------------------------------------
@@ -354,4 +395,91 @@ fn settling_an_already_settled_policy_fails() {
     w.settle(policy_id);
 
     w.settle(policy_id);
+}
+
+// ---------------------------------------------------------------------------
+// Adjoining policies on one plot
+// ---------------------------------------------------------------------------
+
+/// The instant where two back-to-back windows meet belongs to the later one.
+///
+/// The registry rejects only *overlapping* windows, so a renewal starting
+/// exactly where the current cover ends is a legal second policy on the same
+/// plot — back-to-back cover the farmer can buy a season at a time. If both
+/// windows counted a reading taken at the instant they meet, one drought would
+/// pay twice: two premiums bought, one dry day observed, two payouts made.
+#[test]
+fn an_adjoining_renewal_alone_claims_the_instant_the_two_windows_meet() {
+    let w = setup();
+
+    // Cover on plot 0 runs up to `WINDOW_CLOSE`; the renewal starts there. Both
+    // are accepted, which is the registry's half of this rule.
+    let first = w.create_policy(0, THRESHOLD, PAYOUT, PREMIUM, WINDOW_OPEN, WINDOW_CLOSE);
+    let renewal = w.create_policy(
+        0,
+        THRESHOLD,
+        PAYOUT,
+        PREMIUM,
+        WINDOW_CLOSE,
+        WINDOW_CLOSE + 30 * DAY,
+    );
+    assert_eq!((first, renewal), (1, 2));
+
+    // One finalized drought reading, timestamped exactly on the shared instant.
+    w.publish(120, WINDOW_CLOSE);
+
+    // The keeper's next sweep. The earlier policy closes without a qualifying
+    // reading, because the shared instant already sits outside its window.
+    w.at(WINDOW_CLOSE + DAY);
+    let earlier = w.settle(first);
+    assert_eq!(earlier.status, SettlementStatus::Expired);
+    assert_eq!(earlier.paid_amount, 0);
+
+    // The renewal opened at the shared instant, so that same reading pays it.
+    let later = w.settle(renewal);
+    assert_eq!(later.status, SettlementStatus::Paid);
+    assert_eq!(later.reading_timestamp, WINDOW_CLOSE);
+    assert_eq!(later.paid_amount, PAYOUT);
+
+    // One observation, one payout: the pool paid this drought once, not twice.
+    assert_eq!(w.token_client().balance(&w.farmer), PAYOUT);
+    assert_eq!(w.pool_client().reserves(), super::CAPITAL - PAYOUT);
+    assert_eq!(w.pool_client().outstanding_liability(), 0);
+    assert_eq!(
+        w.registry_client().get_policy(&first).status,
+        RegistryStatus::Expired
+    );
+    assert_eq!(
+        w.registry_client().get_policy(&renewal).status,
+        RegistryStatus::Settled
+    );
+}
+
+/// The same boundary, settled in the other order.
+///
+/// Whichever policy a keeper reaches first, the reading on the shared instant is
+/// the renewal's — settling the renewal does not make the closed policy claim
+/// the same observation, and expiring the closed policy does not disturb a claim
+/// the renewal has already been paid for.
+#[test]
+fn the_renewal_is_paid_even_when_it_is_settled_before_the_closed_policy() {
+    let w = setup();
+    let first = w.create_policy(0, THRESHOLD, PAYOUT, PREMIUM, WINDOW_OPEN, WINDOW_CLOSE);
+    let renewal = w.create_policy(
+        0,
+        THRESHOLD,
+        PAYOUT,
+        PREMIUM,
+        WINDOW_CLOSE,
+        WINDOW_CLOSE + 30 * DAY,
+    );
+
+    w.publish(120, WINDOW_CLOSE);
+    assert_eq!(w.settle(renewal).status, SettlementStatus::Paid);
+
+    w.at(WINDOW_CLOSE + DAY);
+    assert_eq!(w.settle(first).status, SettlementStatus::Expired);
+
+    assert_eq!(w.token_client().balance(&w.farmer), PAYOUT);
+    assert_eq!(w.pool_client().reserves(), super::CAPITAL - PAYOUT);
 }

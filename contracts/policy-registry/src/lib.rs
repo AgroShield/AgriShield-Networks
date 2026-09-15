@@ -256,6 +256,11 @@ impl PolicyRegistry {
 
     /// Marks a policy expired once its window closed without a trigger.
     /// Permissionless so the settlement keeper is not a single point of failure.
+    ///
+    /// Expiry opens once the clock is *past* `coverage_end`, one second after
+    /// cover ends. The payout engine's clock is the same one, so a settlement at
+    /// the closing instant reports `Pending` rather than attempting a transition
+    /// this entry point would reject.
     pub fn expire_policy(env: Env, policy_id: u64) -> Result<(), Error> {
         let mut record = storage::get_policy(&env, policy_id)?;
         if !record.is_active() {

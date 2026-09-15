@@ -86,12 +86,17 @@ pub fn evaluate_terms(
     if let Some(reading) = find_trigger(history, coverage_start, coverage_end, trigger_threshold) {
         return Decision::Triggered(reading);
     }
-    // No qualifying reading. Once the window has closed no future observation
+    // No qualifying reading. Once the window has closed, no future observation
     // can fall inside it, so the policy can never pay and is expired instead.
-    // `coverage_end` itself is already outside the half-open window, so the
-    // closing instant is late enough: any reading published from here on is
-    // timestamped `coverage_end` or later and can never qualify.
-    if now >= coverage_end {
+    //
+    // The clock has to be *past* `coverage_end` for that, not merely at it. The
+    // registry only retires a policy once the clock is strictly beyond its
+    // window, so a policy reported `Expired` at `coverage_end` itself would be
+    // one the engine could not actually expire: `settle_policy` would announce a
+    // transition the registry then refuses. `Pending` at that instant keeps the
+    // preview honest, and costs nothing — the half-open window means no reading
+    // can qualify in the meantime.
+    if now > coverage_end {
         Decision::Expired
     } else {
         Decision::Pending

@@ -80,11 +80,11 @@ fn cover_excludes_its_closing_edge() {
     // legal pair of policies — and if both claimed this instant, one reading
     // would pay twice.
     assert_eq!(
-        decide(&[(50, CLOSE)], CLOSE).status(),
+        decide(&[(50, CLOSE)], CLOSE + 1).status(),
         SettlementStatus::Expired,
         "the closing instant is not covered"
     );
-    assert!(decide(&[(50, CLOSE)], CLOSE).reading().is_none());
+    assert!(decide(&[(50, CLOSE)], CLOSE + 1).reading().is_none());
 }
 
 #[test]
@@ -132,12 +132,18 @@ fn a_closed_window_without_a_breach_is_expired() {
 }
 
 #[test]
-fn the_window_is_closed_the_instant_the_clock_reaches_its_end() {
+fn a_closed_window_expires_once_the_clock_is_past_it() {
     // No future reading can be timestamped inside `[OPEN, CLOSE)` once the clock
-    // is at CLOSE, so waiting another instant to say so would only delay the
-    // release of the pool's liability.
+    // is at CLOSE, so the policy is dead at that instant — but the registry only
+    // opens expiry strictly after the window, so the decision has to wait for it.
+    // Reporting `Expired` at CLOSE would name a transition the registry refuses,
+    // which is exactly the disagreement settlement must never have.
     assert_eq!(
         decide(&[(900, OPEN + DAY)], CLOSE).status(),
+        SettlementStatus::Pending
+    );
+    assert_eq!(
+        decide(&[(900, OPEN + DAY)], CLOSE + 1).status(),
         SettlementStatus::Expired
     );
 }

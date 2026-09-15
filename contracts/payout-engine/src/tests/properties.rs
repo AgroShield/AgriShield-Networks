@@ -151,9 +151,10 @@ proptest! {
 
         let expected = if any_qualifying(&entries, start, end, threshold) {
             SettlementStatus::Paid
-        } else if now >= end {
-            // Cover has ended: no observation published from here on can be
-            // timestamped inside `[start, end)`.
+        } else if now > end {
+            // Cover has ended, and the registry's expiry gate has opened with
+            // it: no observation published from here on can be timestamped
+            // inside `[start, end)`, so the policy can never pay.
             SettlementStatus::Expired
         } else {
             SettlementStatus::Pending

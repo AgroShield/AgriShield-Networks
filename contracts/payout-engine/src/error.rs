@@ -33,7 +33,8 @@ pub enum Error {
     EngineNotRegistered = 11,
     /// Liability was already recognised for this policy.
     LiabilityAlreadyRegistered = 12,
-    /// The coverage window is still open, so the policy cannot be expired yet.
+    /// The clock has not passed `coverage_end`, so the policy cannot be expired
+    /// yet: the registry opens expiry one second after a window closes.
     CoverageStillOpen = 13,
     /// Liability may only be dropped for a policy that is no longer live.
     PolicyStillActive = 14,
