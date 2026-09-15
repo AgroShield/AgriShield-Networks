@@ -1,5 +1,7 @@
 //! Read paths used by the indexer and the frontend.
 
+use soroban_sdk::testutils::Address as _;
+
 use super::{setup, PolicySpec, DAY};
 
 #[test]

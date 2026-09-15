@@ -43,7 +43,8 @@ fn only_the_admin_can_rotate_the_payout_engine() {
     let w = setup();
     let new_engine = Address::generate(&w.env);
 
-    w.registry_client().set_payout_engine(&w.farmer, &new_engine);
+    w.registry_client()
+        .set_payout_engine(&w.farmer, &new_engine);
 }
 
 #[test]

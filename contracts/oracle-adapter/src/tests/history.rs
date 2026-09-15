@@ -1,6 +1,6 @@
 //! Bounded per-region history ring.
 
-use super::{setup, T0, DAY};
+use super::{setup, DAY, T0};
 use crate::MAX_HISTORY_PER_REGION;
 
 #[test]
@@ -32,10 +32,7 @@ fn history_is_capped_at_the_configured_ring_size() {
     // The oldest entries were evicted, not the newest.
     assert_eq!(history.get(0).unwrap().timestamp, 5 * DAY + T0);
     assert_eq!(
-        history
-            .get(MAX_HISTORY_PER_REGION - 1)
-            .unwrap()
-            .timestamp,
+        history.get(MAX_HISTORY_PER_REGION - 1).unwrap().timestamp,
         T0 + (MAX_HISTORY_PER_REGION + 4) as u64 * DAY
     );
 }

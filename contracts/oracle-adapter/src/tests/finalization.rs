@@ -1,6 +1,6 @@
 //! Finalization semantics: immutability, pending cleanup, region isolation.
 
-use super::{setup, T0, DAY};
+use super::{setup, DAY, T0};
 
 #[test]
 fn finalized_readings_are_immutable() {
@@ -82,7 +82,13 @@ fn pending_reading_is_cleared_once_finalized() {
     let w = setup(2, 2);
 
     w.submit(&w.signers[0], 260, T0);
-    assert_eq!(w.client().get_pending_reading(&w.region_id, &T0).approvals.len(), 1);
+    assert_eq!(
+        w.client()
+            .get_pending_reading(&w.region_id, &T0)
+            .approvals
+            .len(),
+        1
+    );
 
     w.submit(&w.signers[1], 260, T0);
 

@@ -84,7 +84,7 @@ fn approval_is_rejected_when_the_value_disagrees() {
 fn approval_is_rejected_when_the_signer_already_signed() {
     let env = Env::default();
     let signer = Address::generate(&env);
-    let reading = pending(&env, 300, &[signer.clone()]);
+    let reading = pending(&env, 300, core::slice::from_ref(&signer));
 
     assert_eq!(
         validate_approval(&reading, &signer, 300),
@@ -97,7 +97,10 @@ fn a_first_approval_is_accepted() {
     let env = Env::default();
     let signer = Address::generate(&env);
 
-    assert_eq!(validate_approval(&pending(&env, 300, &[]), &signer, 300), Ok(()));
+    assert_eq!(
+        validate_approval(&pending(&env, 300, &[]), &signer, 300),
+        Ok(())
+    );
 }
 
 #[test]
@@ -105,7 +108,7 @@ fn has_approved_only_matches_the_exact_signer() {
     let env = Env::default();
     let signer = Address::generate(&env);
     let other = Address::generate(&env);
-    let reading = pending(&env, 300, &[signer.clone()]);
+    let reading = pending(&env, 300, core::slice::from_ref(&signer));
 
     assert!(reading.has_approved(&signer));
     assert!(!reading.has_approved(&other));

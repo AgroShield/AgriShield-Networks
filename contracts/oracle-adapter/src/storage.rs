@@ -57,7 +57,9 @@ pub fn require_admin(env: &Env, caller: &Address) -> Result<(), Error> {
 }
 
 pub fn set_threshold(env: &Env, threshold: u32) {
-    env.storage().instance().set(&DataKey::Threshold, &threshold);
+    env.storage()
+        .instance()
+        .set(&DataKey::Threshold, &threshold);
 }
 
 pub fn get_threshold(env: &Env) -> Result<u32, Error> {

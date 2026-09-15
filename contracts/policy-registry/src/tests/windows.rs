@@ -1,6 +1,6 @@
 //! Coverage-window validation: boundaries, minimum length and retroactive cover.
 
-use super::{setup, PolicySpec, T0, DAY};
+use super::{setup, PolicySpec, DAY, T0};
 use crate::{MAX_COVERAGE_WINDOW, MIN_COVERAGE_WINDOW};
 
 #[test]

@@ -43,8 +43,8 @@ pub use crate::events::{
 pub use crate::storage::DataKey;
 pub use crate::threshold::{can_remove_signer, proximity, reached, validate_threshold};
 pub use crate::types::{
-    IndexReading, PendingReading, SubmissionOutcome, MAX_FUTURE_SKEW_SECONDS, MAX_HISTORY_PER_REGION,
-    MAX_INDEX_VALUE, MAX_SIGNERS,
+    IndexReading, PendingReading, SubmissionOutcome, MAX_FUTURE_SKEW_SECONDS,
+    MAX_HISTORY_PER_REGION, MAX_INDEX_VALUE, MAX_SIGNERS,
 };
 
 use soroban_sdk::{contract, contractimpl, Address, Env, Symbol, Vec};

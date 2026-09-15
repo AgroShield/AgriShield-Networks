@@ -1,7 +1,7 @@
 //! Dynamic-weather-proofing guard: a plot may never carry two overlapping
 //! `Active` policies.
 
-use super::{setup, PolicySpec, T0, DAY};
+use super::{setup, PolicySpec, DAY, T0};
 use crate::{MAX_POLICIES_PER_PLOT, MIN_COVERAGE_WINDOW};
 
 #[test]

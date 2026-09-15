@@ -9,7 +9,7 @@
 use soroban_sdk::{contracttype, Address, BytesN, Env, Symbol, Vec};
 
 use crate::error::Error;
-use crate::types::{Policy, PolicyStatus};
+use crate::types::Policy;
 
 /// TTL (in ledgers) applied to persistent entries.
 ///
@@ -119,11 +119,9 @@ pub fn policy_count(env: &Env) -> u64 {
 pub fn save_policy(env: &Env, policy: &Policy) {
     let key = DataKey::Policy(policy.id);
     env.storage().persistent().set(&key, policy);
-    env.storage().persistent().extend_ttl(
-        &key,
-        PERSISTENT_TTL_THRESHOLD,
-        PERSISTENT_TTL_EXTEND_TO,
-    );
+    env.storage()
+        .persistent()
+        .extend_ttl(&key, PERSISTENT_TTL_THRESHOLD, PERSISTENT_TTL_EXTEND_TO);
 }
 
 pub fn get_policy(env: &Env, policy_id: u64) -> Result<Policy, Error> {
@@ -140,12 +138,6 @@ pub fn get_policy(env: &Env, policy_id: u64) -> Result<Policy, Error> {
         }
         None => Err(Error::PolicyNotFound),
     }
-}
-
-/// Convenience wrapper used by the payout engine.
-pub fn is_settled(env: &Env, policy_id: u64) -> Result<bool, Error> {
-    let policy = get_policy(env, policy_id)?;
-    Ok(matches!(policy.status, PolicyStatus::Settled))
 }
 
 // ---------------------------------------------------------------------------
@@ -175,11 +167,9 @@ fn append_index(
     }
     ids.push_back(id);
     env.storage().persistent().set(&key, &ids);
-    env.storage().persistent().extend_ttl(
-        &key,
-        PERSISTENT_TTL_THRESHOLD,
-        PERSISTENT_TTL_EXTEND_TO,
-    );
+    env.storage()
+        .persistent()
+        .extend_ttl(&key, PERSISTENT_TTL_THRESHOLD, PERSISTENT_TTL_EXTEND_TO);
     Ok(())
 }
 

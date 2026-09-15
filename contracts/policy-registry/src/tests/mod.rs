@@ -68,7 +68,9 @@ pub fn setup() -> TestWorld {
         engine,
     };
 
-    world.registry_client().initialize(&world.admin, &world.token);
+    world
+        .registry_client()
+        .initialize(&world.admin, &world.token);
     world
         .registry_client()
         .set_payout_engine(&world.admin, &world.engine);
@@ -121,6 +123,7 @@ impl TestWorld {
 ///
 /// Premium 5,000 with payout 2,000 sits inside the 50% pool-safety ratio, and
 /// the payout covers the farmer's input costs for a single season.
+#[derive(Clone)]
 pub struct PolicySpec {
     pub plot_hash: BytesN<32>,
     pub crop_type: Symbol,

@@ -93,7 +93,8 @@ fn supports_multiple_crops_and_regions_for_one_farmer() {
         soroban_sdk::vec![&w.env, first, second]
     );
     assert_eq!(
-        w.registry_client().get_region_policies(&Symbol::new(&w.env, "ke_machakos")),
+        w.registry_client()
+            .get_region_policies(&Symbol::new(&w.env, "ke_machakos")),
         soroban_sdk::vec![&w.env, first]
     );
 }

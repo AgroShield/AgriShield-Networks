@@ -1,7 +1,7 @@
 //! Settlement and expiry: engine-only settlement, idempotency and permissionless
 //! expiry.
 
-use super::{setup, PolicySpec, T0, DAY};
+use super::{setup, PolicySpec, DAY, T0};
 use crate::PolicyStatus;
 
 #[test]
@@ -152,7 +152,8 @@ fn an_expired_plot_can_be_reinsured_for_the_next_season() {
     w.at(spec.coverage_end + 1);
     w.registry_client().expire_policy(&first);
 
-    let next = PolicySpec::new(&w.env).covering(spec.coverage_end + DAY, spec.coverage_end + 60 * DAY);
+    let next =
+        PolicySpec::new(&w.env).covering(spec.coverage_end + DAY, spec.coverage_end + 60 * DAY);
     let second = w.create(&next);
 
     assert_eq!(second, 2);

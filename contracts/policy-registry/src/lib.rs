@@ -1,4 +1,8 @@
 #![no_std]
+// A policy has ten term fields; grouping them into a struct would complicate the
+// cross-contract ABI that the backend and frontend both call, so the argument
+// count is accepted deliberately.
+#![allow(clippy::too_many_arguments)]
 //! # AgriShield · PolicyRegistry
 //!
 //! Mints parametric weather-insurance policies, escrows the farmer's premium
@@ -32,10 +36,9 @@ mod types;
 mod tests;
 
 pub use crate::error::Error;
-pub use crate::events::{PolicyCreated, PolicyStatusChanged, PayoutEngineSet};
+pub use crate::events::{PayoutEngineSet, PolicyCreated, PolicyStatusChanged};
 pub use crate::policy::{
-    MAX_COVERAGE_WINDOW, MAX_PAYOUT_PREMIUM_RATIO_BPS, MAX_POLICIES_PER_PLOT,
-    MIN_COVERAGE_WINDOW,
+    MAX_COVERAGE_WINDOW, MAX_PAYOUT_PREMIUM_RATIO_BPS, MAX_POLICIES_PER_PLOT, MIN_COVERAGE_WINDOW,
 };
 pub use crate::storage::DataKey;
 pub use crate::types::{Policy, PolicyStatus};
@@ -66,7 +69,11 @@ impl PolicyRegistry {
 
     /// Registers the payout engine allowed to settle policies. Admin-only and
     /// re-callable so the engine can be rotated without redeploying.
-    pub fn set_payout_engine(env: Env, admin: Address, payout_engine: Address) -> Result<(), Error> {
+    pub fn set_payout_engine(
+        env: Env,
+        admin: Address,
+        payout_engine: Address,
+    ) -> Result<(), Error> {
         admin.require_auth();
         storage::require_admin(&env, &admin)?;
         storage::set_payout_engine(&env, &payout_engine);

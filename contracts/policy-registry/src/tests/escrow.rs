@@ -2,7 +2,7 @@
 
 use soroban_sdk::testutils::Address as _;
 
-use super::{setup, PolicySpec, T0, DAY};
+use super::{setup, PolicySpec, DAY, T0};
 use crate::PolicyStatus;
 
 #[test]

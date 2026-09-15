@@ -1,6 +1,6 @@
 //! Partial signatures: pending readings, conflicts, staleness and sanity bands.
 
-use super::{setup, T0, DAY};
+use super::{setup, DAY, T0};
 use crate::MAX_INDEX_VALUE;
 
 #[test]
@@ -166,5 +166,8 @@ fn newer_readings_are_accepted_after_a_finalized_one() {
 
     assert!(later.finalized);
     assert_eq!(w.client().get_latest_index(&w.region_id).index_value, 350);
-    assert_eq!(w.client().get_latest_index(&w.region_id).timestamp, T0 + DAY);
+    assert_eq!(
+        w.client().get_latest_index(&w.region_id).timestamp,
+        T0 + DAY
+    );
 }
