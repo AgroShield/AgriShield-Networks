@@ -52,6 +52,27 @@ stack.
   still retained. `expire_policy` is the deterministic fallback for a window that
   has already closed.
 
+## Packages
+
+| Package | What it is |
+| --- | --- |
+| `contracts/` | The four Soroban contracts above; built and tested with cargo. |
+| [`backend`](backend) | A read-through HTTP API over the contracts, plus the settlement keeper that pushes claims through. |
+| [`frontend`](frontend) | The operator console: a React + Vite single-page app against that API. |
+
+```bash
+pnpm install
+pnpm dev:backend     # http://localhost:3000
+pnpm dev:frontend    # http://localhost:5173, proxying /api to the backend
+pnpm typecheck && pnpm test
+```
+
+The frontend reaches the backend through a same-origin `/api` path, which the dev
+server proxies and a reverse proxy serves in production — the backend sets no CORS
+headers, so a browser calling it cross-origin would have its responses refused.
+Pointing `VITE_API_BASE_URL` at an absolute origin works, but that origin then has
+to be allowed in front of the API.
+
 ## Development
 
 ```bash
