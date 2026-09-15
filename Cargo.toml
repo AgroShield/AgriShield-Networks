@@ -3,6 +3,7 @@ resolver = "2"
 members = [
   "contracts/policy-registry",
   "contracts/oracle-adapter",
+  "contracts/premium-pool",
 ]
 
 [workspace.package]
