@@ -1,9 +1,9 @@
 //! Authorisation: which actor is allowed to call which entry point.
 
-use soroban_sdk::{testutils::Address as _, testutils::MockAuth};
+use soroban_sdk::{testutils::Address as _, testutils::MockAuth, Address};
 
 use super::{setup, PolicySpec};
-use crate::PolicyStatus;
+use crate::{PolicyRegistry, PolicyRegistryClient, PolicyStatus};
 
 #[test]
 #[should_panic(expected = "Error(Auth")]
@@ -92,5 +92,8 @@ fn initialize_requires_the_admin_signature() {
     let no_auths: &[MockAuth] = &[];
     w.env.mock_auths(no_auths);
 
-    w.registry_client().initialize(&w.admin, &w.token);
+    // A freshly deployed registry (the harness one is already wired) so the
+    // auth check is what fails, not the one-time-initialize guard.
+    let fresh = w.env.register(PolicyRegistry, ());
+    PolicyRegistryClient::new(&w.env, &fresh).initialize(&w.admin, &w.token);
 }

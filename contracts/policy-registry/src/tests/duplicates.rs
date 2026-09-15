@@ -123,8 +123,9 @@ fn caps_the_number_of_policies_per_plot() {
         w.create(&spec);
     }
 
-    // The 33rd policy on the same plot trips the anti-growth cap.
-    let start = T0 + 60 * DAY;
+    // The 33rd policy on the same plot trips the anti-growth cap. Its window
+    // must sit after the last one, otherwise the overlap guard fires first.
+    let start = T0 + (MAX_POLICIES_PER_PLOT as u64) * (MIN_COVERAGE_WINDOW + DAY);
     w.at(start);
     w.create(&PolicySpec::new(&w.env).covering(start, start + MIN_COVERAGE_WINDOW));
 }

@@ -140,8 +140,8 @@ fn rejects_negative_trigger_threshold() {
 fn rejects_payout_above_the_pool_safety_ratio() {
     let w = setup();
     let mut spec = PolicySpec::new(&w.env);
-    // Payout may not exceed 50% of premium: 5,000 premium -> max 2,500 payout.
-    spec.payout_amount = 2_501;
+    // Payout may not exceed 5x premium: 5,000 premium -> max 25,000 payout.
+    spec.payout_amount = 25_001;
     w.create(&spec);
 }
 
