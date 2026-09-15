@@ -8,8 +8,8 @@ fn history_records_every_finalized_reading_in_order() {
     let w = setup(1, 1);
 
     w.submit(&w.signers[0], 500, T0);
-    w.submit(&w.signers[0], 450, T0 + DAY);
-    w.submit(&w.signers[0], 320, T0 + 2 * DAY);
+    w.submit_at(&w.signers[0], 450, T0 + DAY);
+    w.submit_at(&w.signers[0], 320, T0 + 2 * DAY);
 
     let history = w.client().get_index_history(&w.region_id);
     assert_eq!(history.len(), 3);
@@ -23,7 +23,7 @@ fn history_is_capped_at_the_configured_ring_size() {
     let w = setup(1, 1);
 
     for step in 0..(MAX_HISTORY_PER_REGION + 5) {
-        w.submit(&w.signers[0], 100 + step as i128, T0 + step as u64 * DAY);
+        w.submit_at(&w.signers[0], 100 + step as i128, T0 + step as u64 * DAY);
     }
 
     let history = w.client().get_index_history(&w.region_id);
@@ -60,7 +60,7 @@ fn each_region_grows_its_own_history() {
     let other = w.other_region();
 
     w.submit(&w.signers[0], 100, T0);
-    w.submit(&w.signers[0], 110, T0 + DAY);
+    w.submit_at(&w.signers[0], 110, T0 + DAY);
     w.client().submit_index(&w.signers[0], &other, &130, &T0);
 
     assert_eq!(w.client().get_index_history(&w.region_id).len(), 2);

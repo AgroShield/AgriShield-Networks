@@ -153,7 +153,7 @@ fn resubmitting_a_finalized_timestamp_is_rejected() {
 fn older_readings_cannot_overwrite_newer_ones() {
     let w = setup(1, 1);
 
-    w.submit(&w.signers[0], 100, T0 + DAY);
+    w.submit_at(&w.signers[0], 100, T0 + DAY);
     w.submit(&w.signers[0], 90, T0);
 }
 
@@ -162,7 +162,7 @@ fn newer_readings_are_accepted_after_a_finalized_one() {
     let w = setup(1, 1);
 
     w.submit(&w.signers[0], 400, T0);
-    let later = w.submit(&w.signers[0], 350, T0 + DAY);
+    let later = w.submit_at(&w.signers[0], 350, T0 + DAY);
 
     assert!(later.finalized);
     assert_eq!(w.client().get_latest_index(&w.region_id).index_value, 350);

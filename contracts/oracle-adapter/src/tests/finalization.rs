@@ -11,7 +11,7 @@ fn finalized_readings_are_immutable() {
 
     // A later reading for a newer timestamp moves `latest` forward without
     // rewriting history.
-    w.submit(&w.signers[0], 200, T0 + DAY);
+    w.submit_at(&w.signers[0], 200, T0 + DAY);
 
     let history = w.client().get_index_history(&w.region_id);
     assert_eq!(history.get(0).unwrap(), first);

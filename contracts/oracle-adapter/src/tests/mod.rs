@@ -58,13 +58,15 @@ pub fn setup(threshold: u32, signer_count: usize) -> OracleWorld {
         client.add_signer(&admin, signer);
     }
 
+    let region_id = Symbol::new(&env, "ng_kaduna");
+
     OracleWorld {
         env,
         adapter,
         admin,
         signers,
         outsider,
-        region_id: Symbol::new(&env, "ng_kaduna"),
+        region_id,
     }
 }
 
@@ -83,9 +85,22 @@ impl OracleWorld {
         Symbol::new(&self.env, "ke_machakos")
     }
 
-    /// Submits an approval as `signer`.
+    /// Submits an approval as `signer` without touching the ledger clock.
+    ///
+    /// Use this when the test deliberately drives a clock-skew condition.
     pub fn submit(&self, signer: &Address, value: i128, timestamp: u64) -> SubmissionOutcome {
         self.client()
             .submit_index(signer, &self.region_id, &value, &timestamp)
+    }
+
+    /// Advances the ledger clock to `timestamp` (if needed) and submits.
+    ///
+    /// An observation is published at or after the moment it describes, so the
+    /// happy-path tests move the chain clock forward before publishing.
+    pub fn submit_at(&self, signer: &Address, value: i128, timestamp: u64) -> SubmissionOutcome {
+        if self.env.ledger().timestamp() < timestamp {
+            self.at(timestamp);
+        }
+        self.submit(signer, value, timestamp)
     }
 }
