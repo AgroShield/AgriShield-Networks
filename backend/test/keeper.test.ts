@@ -1,9 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import type { SettleResult } from '../src/contracts/clients.js';
+import { PayoutEngine, type SettleResult } from '../src/contracts/clients.js';
 import type { SettlementStatus, TriggerEvaluation } from '../src/contracts/types.js';
 import { AppError } from '../src/errors.js';
 import { SettlementKeeper, type KeeperLogger } from '../src/keeper/keeper.js';
+import { contractAddress } from './helpers/env.js';
+import { FakeGateway } from './helpers/fakes.js';
 import { recordingLogger, silentLogger } from './helpers/loggers.js';
 
 // ---------------------------------------------------------------------------
@@ -237,6 +239,93 @@ describe('sweeping', () => {
     expect(report.considered).toBe(0);
     expect(report.failed).toBe(0);
     expect(failing.engine.evaluated).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The closing instant
+// ---------------------------------------------------------------------------
+
+/** An `evaluate` verdict exactly as `scValToNative` would hand it over. */
+function wireEvaluation(status: number): Record<string, unknown> {
+  return {
+    policy_id: 1n,
+    status,
+    index_value: 0n,
+    reading_timestamp: 0n,
+    payout_amount: 0n,
+  };
+}
+
+/** A `settle_policy` outcome exactly as the node reports it. */
+function wireOutcome(status: number): Record<string, unknown> {
+  return {
+    policy_id: 1n,
+    status,
+    index_value: 0n,
+    reading_timestamp: 0n,
+    paid_amount: 0n,
+  };
+}
+
+/**
+ * A keeper reading the engine through its real client, over a scripted node.
+ *
+ * The rest of this suite stubs the engine, which is right for the sweep logic
+ * but cannot catch a verdict that arrives through the decoder. Here the wire
+ * value is what decides, so a status mapped onto the wrong discriminant shows
+ * up as a wrong action rather than as a stubbed answer that was already right.
+ */
+function realClientKeeper(gateway: FakeGateway): SettlementKeeper {
+  return new SettlementKeeper({
+    registry: { policyCount: async () => 1n },
+    engine: new PayoutEngine(gateway, contractAddress()),
+    intervalMs: 1_000,
+    batchSize: 10,
+    logger: silentLogger,
+    now: () => 1_000,
+  });
+}
+
+describe('a policy at its closing instant', () => {
+  it('skips it rather than submitting an expiry', async () => {
+    // At exactly `coverage_end` the engine keeps the window open — the closing
+    // instant is not covered, but the window has not lapsed either — so
+    // `evaluate` answers `Pending` (discriminant 2), and the registry refuses
+    // `expire_policy` for that same second. Submitting here can only ever
+    // produce a failed sweep, so the keeper has to read it as "nothing to do".
+    const gateway = new FakeGateway().withRead('evaluate', wireEvaluation(2));
+
+    const report = await realClientKeeper(gateway).sweep();
+
+    expect(report.entries[0]).toMatchObject({
+      policyId: 1n,
+      action: 'skipped',
+      status: 'Pending',
+    });
+    expect(report.settled).toBe(0);
+    expect(report.expired).toBe(0);
+    expect(report.failed).toBe(0);
+    expect(gateway.writes).toEqual([]);
+  });
+
+  it('submits the expiry once the clock is a second past the window', async () => {
+    // The same policy one second later, where `evaluate` answers `Expired`
+    // (discriminant 1). Expiry releases the pool's liability, so it is worth a
+    // transaction — which is what makes the skip above a decision about the
+    // clock rather than an inability to submit.
+    const gateway = new FakeGateway()
+      .withRead('evaluate', wireEvaluation(1))
+      .withWrite('settle_policy', { hash: 'hash-1', ledger: 42, returnValue: wireOutcome(1) });
+
+    const report = await realClientKeeper(gateway).sweep();
+
+    expect(gateway.writes[0]).toMatchObject({
+      method: 'settle_policy',
+      args: [{ type: 'u64', value: 1n }],
+    });
+    expect(report.entries[0]).toMatchObject({ action: 'expired', status: 'Expired' });
+    expect(report.expired).toBe(1);
   });
 });
 
