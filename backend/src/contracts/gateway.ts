@@ -101,6 +101,23 @@ export class ContractCallError extends Error {
   }
 }
 
+/**
+ * The subset of the RPC client this gateway uses.
+ *
+ * Named so a test can drive the gateway's own branching — polling, error
+ * mapping, the submission handshake — without a network and without standing up
+ * the whole SDK client.
+ */
+export type SorobanRpcServer = Pick<
+  rpc.Server,
+  | 'simulateTransaction'
+  | 'prepareTransaction'
+  | 'sendTransaction'
+  | 'getTransaction'
+  | 'getAccount'
+  | 'getLatestLedger'
+>;
+
 export interface RpcGatewayOptions {
   readonly rpcUrl: string;
   readonly networkPassphrase: string;
@@ -118,13 +135,15 @@ export interface RpcGatewayOptions {
   readonly pollIntervalMs?: number;
   /** Injected by tests so polling does not have to wait out real time. */
   readonly sleep?: (ms: number) => Promise<void>;
+  /** Built from `rpcUrl` unless supplied; injected by tests. */
+  readonly server?: SorobanRpcServer;
 }
 
 const DEFAULT_SUBMISSION_TIMEOUT_MS = 30_000;
 const DEFAULT_POLL_INTERVAL_MS = 1_000;
 
 export class RpcSorobanGateway implements SorobanGateway {
-  private readonly server: rpc.Server;
+  private readonly server: SorobanRpcServer;
   private readonly networkPassphrase: string;
   private readonly readSource: string;
   private readonly keeper: Keypair | undefined;
@@ -137,7 +156,7 @@ export class RpcSorobanGateway implements SorobanGateway {
     // prefix would leave the SDK refusing it as "insecure" for looking
     // different, rather than for being wrong.
     const allowHttp = options.rpcUrl.toLowerCase().startsWith('http:');
-    this.server = new rpc.Server(options.rpcUrl, { allowHttp });
+    this.server = options.server ?? new rpc.Server(options.rpcUrl, { allowHttp });
     this.networkPassphrase = options.networkPassphrase;
     this.readSource = options.readSource;
     this.keeper = options.keeper;
