@@ -41,7 +41,10 @@ stack.
   token balance of the contract itself, so accounting cannot drift from reality.
 - **Cover is window-scoped.** A breach observed before cover began or after it
   closed can never trigger a payment, which is what stops retroactive purchases
-  against weather a farmer has already seen.
+  against weather a farmer has already seen. The window is half-open
+  (`[coverage_start, coverage_end)`), matching the registry's overlap rule: the
+  instant two adjoining windows meet belongs to the later one, so one reading can
+  never pay two policies on the same plot.
 - **Liability is bookkept per policy, exactly once.** Settling one policy never
   consumes the cover recognised for another.
 - **Readings are bounded history.** The oracle retains a limited ring per

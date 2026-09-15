@@ -4,6 +4,12 @@
  * A route either throws one of these — in which case its status code and its
  * stable, machine-readable `code` are part of the API contract — or throws
  * something else, which the server reports as a 500 without echoing internals.
+ *
+ * Only the statuses a route decides itself have a helper. A 404 or a 409 for a
+ * policy that does not exist, or that has already left the book, is not a
+ * decision a route makes: it comes from the contract's own error code via the
+ * table in `contracts/clients.ts`, and inventing a second way to produce it here
+ * would let the two disagree.
  */
 
 /** HTTP status codes the API uses deliberately. */
@@ -31,19 +37,6 @@ export function describeError(cause: unknown): string {
 /** 400 — the request itself is wrong and retrying it unchanged will not help. */
 export function badRequest(code: string, message: string, details?: unknown): AppError {
   return new AppError(400, code, message, details);
-}
-
-/** 404 — the thing the request names does not exist on chain. */
-export function notFound(code: string, message: string, details?: unknown): AppError {
-  return new AppError(404, code, message, details);
-}
-
-/**
- * 409 — the request was well formed but the chain is in a state that makes it
- * impossible, such as settling a policy that has already left the book.
- */
-export function conflict(code: string, message: string, details?: unknown): AppError {
-  return new AppError(409, code, message, details);
 }
 
 /** 502 — an upstream contract call was rejected. */

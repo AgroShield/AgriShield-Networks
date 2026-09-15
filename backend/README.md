@@ -87,7 +87,7 @@ Every failure has the same body, so a client needs one parser:
 
 | Status | When |
 | --- | --- |
-| 400 | The request is malformed, or asked for something ambiguous (both `farmer` and `region`). |
+| 400 | The request is malformed, asked for something ambiguous (both `farmer` and `region`), or names something the chain cannot accept — a policy id wider than a `u64`, a region that is not a 32-byte Soroban `Symbol`, a farmer address whose checksum does not verify. Those are refused here rather than sent, because the argument encoder throws before the node is reached and would otherwise be reported as a 503. |
 | 404 | The chain has no such policy. |
 | 409 | Well formed, but the chain is in a state that makes it impossible — already settled, window still open, policy still live. |
 | 502 | A contract rejected the call with a code this build has no meaning for, or returned a shape it cannot decode. |
