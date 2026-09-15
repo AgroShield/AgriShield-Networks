@@ -216,6 +216,26 @@ describe('submitting a contract call', () => {
     expect(server.polls).toEqual([]);
   });
 
+  it('reports a node that is too busy to accept the transaction', async () => {
+    // A saturated node answers `TRY_AGAIN_LATER` and queues nothing. Without a
+    // branch of its own this fell through to the poll loop, which waited out the
+    // whole submission budget and then reported a timeout for a transaction that
+    // was never submitted — pointing at the wrong problem.
+    const keeper = Keypair.random();
+    const { sleep, waits } = sleepRecorder();
+    const server = new ScriptedServer().withSend(sendResponse('TRY_AGAIN_LATER', 'hash-busy'));
+
+    const error = await gateway({ server, keeper, sleep })
+      .invoke(CALL)
+      .catch((cause: unknown) => cause);
+
+    expect(error).toBeInstanceOf(ContractCallError);
+    expect((error as Error).message).toMatch(/too busy/);
+    // Failed immediately: nothing was polled for and no time was spent waiting.
+    expect(server.polls).toEqual([]);
+    expect(waits).toEqual([]);
+  });
+
   it('reports a transaction the network included and failed', async () => {
     const keeper = Keypair.random();
     const server = new ScriptedServer()

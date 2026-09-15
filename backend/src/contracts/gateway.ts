@@ -234,7 +234,20 @@ export class RpcSorobanGateway implements SorobanGateway {
         `the network rejected transaction ${sent.hash}`,
       );
     }
+    if (sent.status === 'TRY_AGAIN_LATER') {
+      // The node declined to queue it, which it does when it is saturated. There
+      // is nothing to poll for: waiting out the submission budget would end in
+      // "not included within 30000ms" for a transaction that was never accepted,
+      // describing a timeout where the real answer is "the node is busy".
+      throw new ContractCallError(
+        call.contractId,
+        call.method,
+        'the node is too busy to accept the transaction; it was not submitted',
+      );
+    }
 
+    // `PENDING`, and `DUPLICATE` for a transaction already in flight: both mean
+    // the node has it, so the answer is to wait for inclusion.
     return this.awaitInclusion(call, sent.hash);
   }
 
