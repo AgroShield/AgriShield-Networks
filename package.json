@@ -1,0 +1,28 @@
+{
+  "name": "agrishield",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Parametric weather micro-insurance for smallholder farmers on Stellar/Soroban",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AgroShield/AgriShield-Networks"
+  },
+  "engines": {
+    "node": ">=20.11.0",
+    "pnpm": ">=9.0.0"
+  },
+  "packageManager": "pnpm@11.24.0",
+  "scripts": {
+    "typecheck": "pnpm -r --if-present typecheck",
+    "lint": "pnpm -r --if-present lint",
+    "test": "pnpm -r --if-present test",
+    "build": "pnpm -r --if-present build",
+    "dev:backend": "pnpm --filter @agrishield/backend dev",
+    "dev:frontend": "pnpm --filter @agrishield/frontend dev",
+    "test:contracts": "cargo test --workspace",
+    "lint:contracts": "cargo clippy --workspace --all-targets -- -D warnings",
+    "fmt:contracts": "cargo fmt --all -- --check",
+    "deploy:testnet": "./scripts/deploy-testnet.sh"
+  }
+}
