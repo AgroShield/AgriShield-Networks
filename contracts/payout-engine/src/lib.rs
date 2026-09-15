@@ -43,6 +43,9 @@ mod storage;
 mod trigger;
 mod types;
 
+#[cfg(test)]
+mod tests;
+
 pub use crate::abi::{IndexReading, Policy, PolicyStatus};
 pub use crate::clients::{
     OracleAdapterClient, OracleAdapterInterface, PolicyRegistryClient, PolicyRegistryInterface,
