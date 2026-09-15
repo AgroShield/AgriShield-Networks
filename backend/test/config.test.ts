@@ -59,6 +59,9 @@ describe('loadConfig', () => {
     const config = loadConfig({ ...testEnv(), SOROBAN_NETWORK: 'mainnet' });
 
     expect(config.soroban.networkPassphrase).toBe(Networks.PUBLIC);
+    // The name is what `/health` reports: a passphrase is not an answer to
+    // "which network is this?" for anyone reading it.
+    expect(config.soroban.network).toBe('mainnet');
   });
 
   it('rejects an unknown network name when no passphrase is given', () => {
@@ -75,6 +78,19 @@ describe('loadConfig', () => {
     });
 
     expect(config.soroban.networkPassphrase).toBe('Moonnet ; September 2026');
+    expect(config.soroban.network).toBe('custom');
+  });
+
+  it('names the network from the passphrase, not from the variable', () => {
+    // A deployment that names `testnet` and then points the passphrase at mainnet
+    // is on mainnet, and the health response has to say so.
+    const config = loadConfig({
+      ...testEnv(),
+      SOROBAN_NETWORK: 'testnet',
+      SOROBAN_NETWORK_PASSPHRASE: Networks.PUBLIC,
+    });
+
+    expect(config.soroban.network).toBe('mainnet');
   });
 
   it('enables the keeper when a signing key is configured', () => {

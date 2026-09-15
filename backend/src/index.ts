@@ -59,7 +59,7 @@ async function main(): Promise<void> {
     gateway,
     contracts,
     addresses: config.soroban.addresses,
-    network: networkName(config),
+    network: config.soroban.network,
     keeper,
   });
 
@@ -86,11 +86,6 @@ async function main(): Promise<void> {
   }
 
   await app.listen({ host: config.server.host, port: config.server.port });
-}
-
-/** The configured network's friendly name, for logs and the health endpoint. */
-function networkName(config: AppConfig): string {
-  return config.soroban.networkPassphrase;
 }
 
 await main();

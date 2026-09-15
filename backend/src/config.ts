@@ -20,6 +20,8 @@ const KNOWN_NETWORKS: Readonly<Record<string, string>> = {
 };
 
 export interface SorobanSettings {
+  /** The network's friendly name, or `custom` for a passphrase we do not know. */
+  readonly network: string;
   readonly rpcUrl: string;
   readonly networkPassphrase: string;
   readonly addresses: ContractAddresses;
@@ -157,12 +159,13 @@ function booleanFlag(env: Env, name: string, fallback: boolean): boolean {
  * fails at boot with the reason instead of at the first settlement.
  */
 export function loadConfig(env: Env = process.env): AppConfig {
-  const network = optional(env, 'SOROBAN_NETWORK') ?? 'testnet';
-  const passphrase = optional(env, 'SOROBAN_NETWORK_PASSPHRASE') ?? KNOWN_NETWORKS[network];
+  const requestedNetwork = optional(env, 'SOROBAN_NETWORK') ?? 'testnet';
+  const passphrase =
+    optional(env, 'SOROBAN_NETWORK_PASSPHRASE') ?? KNOWN_NETWORKS[requestedNetwork];
   if (passphrase === undefined) {
     const known = Object.keys(KNOWN_NETWORKS).join(', ');
     throw new ConfigError(
-      `SOROBAN_NETWORK must be one of ${known}, or SOROBAN_NETWORK_PASSPHRASE must be set (got ${JSON.stringify(network)})`,
+      `SOROBAN_NETWORK must be one of ${known}, or SOROBAN_NETWORK_PASSPHRASE must be set (got ${JSON.stringify(requestedNetwork)})`,
     );
   }
 
@@ -196,8 +199,15 @@ export function loadConfig(env: Env = process.env): AppConfig {
   }
   const readSource = accountId('SOROBAN_READ_SOURCE', readSourceCandidate);
 
+  // Named from the passphrase rather than from the variable that supplied it: a
+  // deployment may name one network and then override its passphrase, and what an
+  // operator reading `/health` needs is the network the process is really on.
+  const network =
+    Object.keys(KNOWN_NETWORKS).find((name) => KNOWN_NETWORKS[name] === passphrase) ?? 'custom';
+
   return {
     soroban: {
+      network,
       rpcUrl,
       networkPassphrase: passphrase,
       addresses,
