@@ -10,7 +10,10 @@
 //!
 //! * [`trigger`] — the pure decision table
 //! * [`settlement`] — payouts, expiry and liability through the whole system
+//! * [`authorization`] — who may configure the engine, and what it refuses to
+//!   be configured against
 
+mod authorization;
 mod settlement;
 mod trigger;
 
