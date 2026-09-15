@@ -1,0 +1,25 @@
+[package]
+name = "payout-engine"
+description = "AgriShield payout engine: cross-contract settlement of policies against finalized oracle readings"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+doctest = false
+
+[dependencies]
+soroban-sdk = { workspace = true }
+
+[dev-dependencies]
+soroban-sdk = { workspace = true, features = ["testutils"] }
+# The engine's tests settle real policies, so they deploy the other three
+# contracts and drive them over the same cross-contract path used in
+# production. These are dev-only: the engine decodes their types through the
+# ABI mirrors in `src/abi.rs` rather than linking their crates into its wasm.
+policy-registry = { path = "../policy-registry" }
+oracle-adapter = { path = "../oracle-adapter" }
+premium-pool = { path = "../premium-pool" }
