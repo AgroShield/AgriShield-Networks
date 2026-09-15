@@ -41,14 +41,19 @@ impl Decision {
     }
 }
 
-/// Earliest reading inside `[coverage_start, coverage_end]` whose index reached
+/// Earliest reading inside `[coverage_start, coverage_end)` whose index reached
 /// the policy's trigger threshold.
 ///
 /// A policy pays when the observed index is *at or below* its threshold (a
 /// drought trigger is "less rain than this"), and only readings taken while
-/// cover was live may count. The window is inclusive at both ends, matching how
-/// the registry validates it: cover runs from `coverage_start` through
-/// `coverage_end`.
+/// cover was live may count. The window is half-open, matching the registry:
+/// cover runs from `coverage_start` up to but not including `coverage_end`, and
+/// [`crate::abi::Policy::overlaps`] uses the same `[start, end)` convention.
+///
+/// The two must agree. Were the trigger inclusive at the closing edge, a policy
+/// ending at `T` and another starting at `T` — which the registry permits on the
+/// same plot, because it only rejects *overlapping* windows — would both claim a
+/// reading timestamped exactly `T`, paying twice for one observation.
 ///
 /// Returns the *earliest* qualifying reading rather than the latest, so the
 /// amount paid never depends on how many observations happened to be published
@@ -61,7 +66,7 @@ pub fn find_trigger(
 ) -> Option<IndexReading> {
     history.iter().find(|reading| {
         reading.timestamp >= coverage_start
-            && reading.timestamp <= coverage_end
+            && reading.timestamp < coverage_end
             && reading.index_value <= trigger_threshold
     })
 }
@@ -83,7 +88,10 @@ pub fn evaluate_terms(
     }
     // No qualifying reading. Once the window has closed no future observation
     // can fall inside it, so the policy can never pay and is expired instead.
-    if now > coverage_end {
+    // `coverage_end` itself is already outside the half-open window, so the
+    // closing instant is late enough: any reading published from here on is
+    // timestamped `coverage_end` or later and can never qualify.
+    if now >= coverage_end {
         Decision::Expired
     } else {
         Decision::Pending

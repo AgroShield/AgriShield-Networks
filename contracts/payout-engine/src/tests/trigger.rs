@@ -63,19 +63,40 @@ fn a_reading_just_above_the_threshold_does_not_trigger() {
 }
 
 #[test]
-fn cover_includes_both_of_its_edges() {
-    // A drought observed on the first or last day of cover is still covered,
-    // and the registry validates the window with the same inclusive rule.
+fn cover_includes_its_opening_edge() {
+    // A drought observed on the first instant of cover is covered.
     assert_eq!(
         decide(&[(50, OPEN)], CLOSE).status(),
         SettlementStatus::Paid,
         "a breach on the opening day must count"
     );
+}
+
+#[test]
+fn cover_excludes_its_closing_edge() {
+    // The window is `[coverage_start, coverage_end)`: the closing instant
+    // belongs to the *next* window, not this one. The registry only rejects
+    // *overlapping* windows, so a back-to-back renewal on the same plot is a
+    // legal pair of policies — and if both claimed this instant, one reading
+    // would pay twice.
     assert_eq!(
         decide(&[(50, CLOSE)], CLOSE).status(),
-        SettlementStatus::Paid,
-        "a breach on the closing day must count"
+        SettlementStatus::Expired,
+        "the closing instant is not covered"
     );
+    assert!(decide(&[(50, CLOSE)], CLOSE).reading().is_none());
+}
+
+#[test]
+fn a_boundary_breach_pays_the_later_policy_exactly_once() {
+    // The same instant, seen from either side of the shared edge.
+    let env = Env::default();
+    let entries = history(&env, &[(50, CLOSE)]);
+
+    // The policy that ends at CLOSE does not cover it.
+    assert!(find_trigger(&entries, OPEN, CLOSE, THRESHOLD).is_none());
+    // The renewal that starts at CLOSE does.
+    assert!(find_trigger(&entries, CLOSE, CLOSE + 30 * DAY, THRESHOLD).is_some());
 }
 
 #[test]
@@ -108,6 +129,17 @@ fn a_closed_window_without_a_breach_is_expired() {
     let decision = decide(&[(900, CLOSE - DAY)], CLOSE + 1);
 
     assert_eq!(decision.status(), SettlementStatus::Expired);
+}
+
+#[test]
+fn the_window_is_closed_the_instant_the_clock_reaches_its_end() {
+    // No future reading can be timestamped inside `[OPEN, CLOSE)` once the clock
+    // is at CLOSE, so waiting another instant to say so would only delay the
+    // release of the pool's liability.
+    assert_eq!(
+        decide(&[(900, OPEN + DAY)], CLOSE).status(),
+        SettlementStatus::Expired
+    );
 }
 
 #[test]

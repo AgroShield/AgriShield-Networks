@@ -119,10 +119,10 @@ impl PayoutEngine {
     /// Settles a policy against the region's finalized index history.
     ///
     /// Pays the farmer when the index breached the policy's threshold inside the
-    /// coverage window, expires the policy when the window closed without a
-    /// breach, and reports `Pending` when nothing is due yet. Retrying a
-    /// `Pending` policy later is harmless; retrying a settled one fails because
-    /// the policy is no longer active.
+    /// coverage window `[coverage_start, coverage_end)`, expires the policy when
+    /// the window closed without a breach, and reports `Pending` when nothing is
+    /// due yet. Retrying a `Pending` policy later is harmless; retrying a
+    /// settled one fails because the policy is no longer active.
     ///
     /// Permissionless: settlement is keeper work, not privileged work, so a
     /// stalled operator cannot strand a farmer's claim. Forgery is still
@@ -169,9 +169,13 @@ impl PayoutEngine {
     /// Exposed separately from [`Self::settle_policy`] so a keeper can force the
     /// deterministic path — and release the pool's liability — without waiting
     /// for the region's readings to age out of the oracle's bounded history.
+    ///
+    /// The window is half-open, so cover has ended the instant the clock reaches
+    /// `coverage_end` — the same point at which [`Self::settle_policy`] stops
+    /// reporting `Pending` — and from there no reading can ever qualify.
     pub fn expire_policy(env: Env, policy_id: u64) -> Result<(), Error> {
         let policy = load_active_policy(&env, policy_id)?;
-        if env.ledger().timestamp() <= policy.coverage_end {
+        if env.ledger().timestamp() < policy.coverage_end {
             return Err(Error::CoverageStillOpen);
         }
         expire(&env, &policy)
