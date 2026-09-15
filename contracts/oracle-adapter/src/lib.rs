@@ -119,7 +119,9 @@ impl OracleAdapter {
         if !found {
             return Err(Error::SignerNotRegistered);
         }
-        if !threshold::can_remove_signer(next.len(), threshold) {
+        // The guard is expressed on the *current* set: removing one signer is
+        // safe only while the remaining count still satisfies the threshold.
+        if !threshold::can_remove_signer(signers.len(), threshold) {
             return Err(Error::SignerSetTooSmall);
         }
 
@@ -167,6 +169,9 @@ impl OracleAdapter {
         index_value: i128,
         timestamp: u64,
     ) -> Result<SubmissionOutcome, Error> {
+        if !storage::is_initialized(&env) {
+            return Err(Error::NotInitialized);
+        }
         signer.require_auth();
         storage::require_signer(&env, &signer)?;
 

@@ -22,6 +22,9 @@ pub fn reached(approvals: u32, threshold: u32) -> bool {
 }
 
 /// True when removing one signer would still leave the threshold satisfiable.
+///
+/// `signer_count` is the size of the set *before* the removal, so the check is
+/// `signer_count - 1 >= threshold`.
 pub fn can_remove_signer(signer_count: u32, threshold: u32) -> bool {
     signer_count > threshold
 }
