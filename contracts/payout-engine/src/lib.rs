@@ -40,6 +40,7 @@ mod clients;
 mod error;
 mod events;
 mod storage;
+mod trigger;
 mod types;
 
 pub use crate::abi::{IndexReading, Policy, PolicyStatus};
@@ -50,9 +51,10 @@ pub use crate::clients::{
 pub use crate::error::Error;
 pub use crate::events::ContractsConfigured;
 pub use crate::storage::DataKey;
+pub use crate::trigger::{evaluate_terms, find_trigger, Decision};
 pub use crate::types::{Contracts, SettlementOutcome, SettlementStatus, TriggerEvaluation};
 
-use soroban_sdk::{contract, contractimpl, Address, Env};
+use soroban_sdk::{contract, contractimpl, Address, Env, Symbol, Vec};
 
 /// Storage-facing implementation of the AgriShield payout engine.
 #[contract]
@@ -103,6 +105,39 @@ impl PayoutEngine {
     // Views
     // -----------------------------------------------------------------------
 
+    /// Read-only preview of what [`Self::settle_policy`] would do right now.
+    ///
+    /// No state change and no authorisation, so a keeper can sweep every live
+    /// policy in a region each round and only submit the settlements that will
+    /// actually do something. The status it reports is produced by the same
+    /// pure decision procedure settlement uses.
+    pub fn evaluate(env: Env, policy_id: u64) -> Result<TriggerEvaluation, Error> {
+        let policy = load_active_policy(&env, policy_id)?;
+        let history = load_history(&env, &policy.region_id)?;
+        let decision = trigger::evaluate_terms(
+            &history,
+            policy.coverage_start,
+            policy.coverage_end,
+            policy.trigger_threshold,
+            env.ledger().timestamp(),
+        );
+        let (index_value, reading_timestamp) = match decision.reading() {
+            Some(reading) => (reading.index_value, reading.timestamp),
+            None => (0, 0),
+        };
+        Ok(TriggerEvaluation {
+            policy_id,
+            status: decision.status(),
+            index_value,
+            reading_timestamp,
+            payout_amount: if decision.reading().is_some() {
+                policy.payout_amount
+            } else {
+                0
+            },
+        })
+    }
+
     /// The three contracts this engine orchestrates.
     pub fn contracts(env: Env) -> Result<Contracts, Error> {
         Ok(Contracts {
@@ -120,6 +155,36 @@ impl PayoutEngine {
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
+
+/// Reads a policy from the registry.
+///
+/// Any registry failure maps to [`Error::PolicyNotFound`]: in a correctly wired
+/// deployment the only reason `get_policy` can fail is an unknown id.
+fn load_policy(env: &Env, policy_id: u64) -> Result<Policy, Error> {
+    let registry = clients::PolicyRegistryClient::new(env, &storage::get_policy_registry(env)?);
+    match registry.try_get_policy(&policy_id) {
+        Ok(Ok(policy)) => Ok(policy),
+        _ => Err(Error::PolicyNotFound),
+    }
+}
+
+/// Reads a policy and requires it to still be settleable.
+fn load_active_policy(env: &Env, policy_id: u64) -> Result<Policy, Error> {
+    let policy = load_policy(env, policy_id)?;
+    if !policy.is_active() {
+        return Err(Error::PolicyNotActive);
+    }
+    Ok(policy)
+}
+
+/// The region's bounded, oldest-first reading history.
+fn load_history(env: &Env, region_id: &Symbol) -> Result<Vec<IndexReading>, Error> {
+    let oracle = clients::OracleAdapterClient::new(env, &storage::get_oracle(env)?);
+    match oracle.try_get_index_history(region_id) {
+        Ok(Ok(history)) => Ok(history),
+        _ => Err(Error::OracleCallFailed),
+    }
+}
 
 /// Validates and stores the three contract addresses.
 ///
