@@ -49,7 +49,7 @@ pub use crate::clients::{
     PremiumPoolClient, PremiumPoolInterface,
 };
 pub use crate::error::Error;
-pub use crate::events::ContractsConfigured;
+pub use crate::events::{ContractsConfigured, PolicyLiabilityRegistered, PolicyLiabilityReleased};
 pub use crate::storage::DataKey;
 pub use crate::trigger::{evaluate_terms, find_trigger, Decision};
 pub use crate::types::{Contracts, SettlementOutcome, SettlementStatus, TriggerEvaluation};
@@ -102,6 +102,62 @@ impl PayoutEngine {
     }
 
     // -----------------------------------------------------------------------
+    // Cover liability
+    // -----------------------------------------------------------------------
+
+    /// Recognises a live policy's payout as liability on the premium pool.
+    ///
+    /// This is what stops the pool admin withdrawing capital that a live policy
+    /// depends on, and it is permissionless for exactly that reason: anyone may
+    /// lock the capital behind a policy they can see, and the call is idempotent
+    /// per policy. It is *not* a way to grief the pool — every registered policy
+    /// genuinely does represent that liability.
+    ///
+    /// Fails with [`Error::LiabilityAlreadyRegistered`] rather than silently
+    /// double-counting, because an inflated liability figure would wrongly lock
+    /// capital that no policy is claiming.
+    pub fn register_liability(env: Env, policy_id: u64) -> Result<(), Error> {
+        let policy = load_active_policy(&env, policy_id)?;
+        if storage::liability_registered(&env, policy_id) {
+            return Err(Error::LiabilityAlreadyRegistered);
+        }
+
+        let pool = clients::PremiumPoolClient::new(&env, &storage::get_premium_pool(&env)?);
+        let me = env.current_contract_address();
+        match pool.try_accrue_liability(&me, &policy.payout_amount) {
+            Ok(Ok(())) => {}
+            _ => return Err(Error::PoolCallFailed),
+        }
+        storage::mark_liability_registered(&env, policy_id);
+
+        events::liability_registered(
+            &env,
+            &PolicyLiabilityRegistered {
+                policy_id,
+                payout_amount: policy.payout_amount,
+            },
+        );
+        Ok(())
+    }
+
+    /// Drops the liability carried for a policy that can no longer pay out.
+    ///
+    /// This is the cancellation path: the registry refunds a farmer's premium
+    /// before cover opens, and the pool must stop reserving capital for a policy
+    /// that no longer exists. Only a policy that has already reached a terminal
+    /// status is accepted — releasing liability for a live policy would free
+    /// capital its eventual claim still needs.
+    ///
+    /// Idempotent for a policy whose liability was never recognised.
+    pub fn release_liability(env: Env, policy_id: u64) -> Result<(), Error> {
+        let policy = load_policy(&env, policy_id)?;
+        if policy.is_active() {
+            return Err(Error::PolicyStillActive);
+        }
+        release_liability_if_registered(&env, &policy)
+    }
+
+    // -----------------------------------------------------------------------
     // Views
     // -----------------------------------------------------------------------
 
@@ -147,6 +203,11 @@ impl PayoutEngine {
         })
     }
 
+    /// Whether the pool currently carries this policy's payout as liability.
+    pub fn liability_registered(env: Env, policy_id: u64) -> bool {
+        storage::liability_registered(&env, policy_id)
+    }
+
     pub fn admin(env: Env) -> Result<Address, Error> {
         storage::get_admin(&env)
     }
@@ -184,6 +245,37 @@ fn load_history(env: &Env, region_id: &Symbol) -> Result<Vec<IndexReading>, Erro
         Ok(Ok(history)) => Ok(history),
         _ => Err(Error::OracleCallFailed),
     }
+}
+
+/// Releases the pool liability carried for `policy`, if any.
+///
+/// The amount released is always the policy's full payout — exactly what
+/// [`PayoutEngine::register_liability`] accrued — so the pool's liability figure
+/// stays balanced policy by policy instead of drifting in aggregate.
+///
+/// A policy whose liability was never recognised is a no-op rather than an
+/// error: cancelling a policy that was never registered must still work.
+fn release_liability_if_registered(env: &Env, policy: &Policy) -> Result<(), Error> {
+    if !storage::liability_registered(env, policy.id) {
+        return Ok(());
+    }
+
+    let pool = clients::PremiumPoolClient::new(env, &storage::get_premium_pool(env)?);
+    let me = env.current_contract_address();
+    match pool.try_release_liability(&me, &policy.payout_amount) {
+        Ok(Ok(())) => {}
+        _ => return Err(Error::PoolCallFailed),
+    }
+    storage::clear_liability_registered(env, policy.id);
+
+    events::liability_released(
+        env,
+        &PolicyLiabilityReleased {
+            policy_id: policy.id,
+            payout_amount: policy.payout_amount,
+        },
+    );
+    Ok(())
 }
 
 /// Validates and stores the three contract addresses.
