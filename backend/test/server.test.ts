@@ -39,6 +39,13 @@ function buildApp(gateway: FakeGateway, keeper?: SettlementKeeper): Built {
   return { app, gateway };
 }
 
+/** A valid account id with its final character changed, so its checksum fails. */
+function mistypedAddress(): string {
+  const valid = accountAddress();
+  const last = valid.slice(-1);
+  return `${valid.slice(0, -1)}${last === 'A' ? 'B' : 'A'}`;
+}
+
 /** A gateway whose engine reports the configured wiring, so /health is ok. */
 function healthyGateway(): FakeGateway {
   const config = testConfig();
@@ -143,6 +150,35 @@ describe('GET /policies/:policyId', () => {
     expect(response.json()).toMatchObject({ error: { code: 'invalid_request' } });
     await app.close();
   });
+
+  it('rejects a policy id wider than the u64 the registry stores', async () => {
+    // Twenty digits pass the shape check and still overflow a u64. Left to the
+    // argument encoder this throws, and a throw there is indistinguishable from
+    // an unreachable node — so the caller would be told to check the network.
+    const { app, gateway } = buildApp(new FakeGateway());
+
+    const response = await app.inject({ method: 'GET', url: '/policies/99999999999999999999' });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({ error: { code: 'invalid_policy_id' } });
+    // Rejected before any contract call was attempted.
+    expect(gateway.reads).toEqual([]);
+    await app.close();
+  });
+
+  it('accepts the largest policy id the registry could hold', async () => {
+    const gateway = new FakeGateway().withRead('get_policy', wirePolicy());
+    const { app } = buildApp(gateway);
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/policies/18446744073709551615',
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(gateway.reads[0]?.args[0]).toMatchObject({ type: 'u64', value: 18_446_744_073_709_551_615n });
+    await app.close();
+  });
 });
 
 describe('GET /policies', () => {
@@ -195,6 +231,37 @@ describe('GET /policies', () => {
     });
 
     expect(response.statusCode).toBe(400);
+    await app.close();
+  });
+
+  it('rejects a region the symbol type cannot hold', async () => {
+    // A `Symbol` is at most 32 bytes of `[a-zA-Z0-9_]`. A region with a space in
+    // it encodes fine but is refused by the host, which would surface as an
+    // upstream failure rather than a bad request.
+    const { app, gateway } = buildApp(new FakeGateway());
+
+    const spaced = await app.inject({ method: 'GET', url: '/policies?region=ng%20kaduna' });
+    const tooLong = await app.inject({
+      method: 'GET',
+      url: `/policies?region=${'a'.repeat(33)}`,
+    });
+
+    expect(spaced.statusCode).toBe(400);
+    expect(tooLong.statusCode).toBe(400);
+    expect(gateway.reads).toEqual([]);
+    await app.close();
+  });
+
+  it('rejects a farmer address whose checksum does not verify', async () => {
+    // Hand-pasted addresses are mistyped, not invented, so the usual bad input
+    // is a well-shaped strkey with a broken checksum.
+    const { app, gateway } = buildApp(new FakeGateway());
+
+    const response = await app.inject({ method: 'GET', url: `/policies?farmer=${mistypedAddress()}` });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({ error: { code: 'invalid_farmer' } });
+    expect(gateway.reads).toEqual([]);
     await app.close();
   });
 });

@@ -18,7 +18,13 @@ import {
   type EvaluationResponse,
   type PolicyResponse,
 } from '../serializers.js';
-import { DEFAULT_LIST_LIMIT, POLICY_ID_PARAMS, POLICY_LIST_QUERY, policyIdFrom } from './shared.js';
+import {
+  DEFAULT_LIST_LIMIT,
+  POLICY_ID_PARAMS,
+  POLICY_LIST_QUERY,
+  farmerAddress,
+  policyIdFrom,
+} from './shared.js';
 
 export interface PolicyRouteDeps {
   readonly contracts: Contracts;
@@ -60,7 +66,7 @@ export function registerPolicyRoutes(app: FastifyInstance, deps: PolicyRouteDeps
 
       const ids =
         farmer !== undefined
-          ? await registry.farmerPolicies(farmer)
+          ? await registry.farmerPolicies(farmerAddress(farmer))
           : await registry.regionPolicies(region as string);
 
       // The registry returns ids oldest first, so the newest end is the more
