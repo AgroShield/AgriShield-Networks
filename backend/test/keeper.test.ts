@@ -163,6 +163,26 @@ describe('sweeping', () => {
     expect(report.entries[0]).toMatchObject({ action: 'expired', status: 'Expired' });
   });
 
+  it('does not report a settlement that left the policy pending as an expiry', async () => {
+    // `settle_policy` answers with the status it acted on. Expiry is not the
+    // only alternative to a payout, so a non-`Paid` outcome must not be read as
+    // "cover lapsed" — this status cannot come back from a sweep today, and the
+    // mapping is explicit so that it stays correct if one ever does.
+    const pending = settleResult(1n, 'Pending');
+    const { keeper } = harness({
+      count: 1n,
+      evaluations: [[1n, evaluation(1n, 'Paid')]],
+      settlements: [[1n, pending]],
+    });
+
+    const report = await keeper.sweep();
+
+    expect(report.expired).toBe(0);
+    expect(report.settled).toBe(0);
+    expect(report.entries[0]).toMatchObject({ action: 'skipped', status: 'Pending' });
+    expect(report.entries[0]?.reason).toContain('open');
+  });
+
   it('treats a policy that already left the book as skipped, not failed', async () => {
     const { keeper, engine } = harness({
       count: 1n,

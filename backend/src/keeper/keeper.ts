@@ -25,7 +25,7 @@
  * sequence churn.
  */
 
-import type { PayoutEngine, PolicyRegistry } from '../contracts/clients.js';
+import type { PayoutEngine, PolicyRegistry, SettleResult } from '../contracts/clients.js';
 import type { SettlementStatus } from '../contracts/types.js';
 import { AppError, describeError } from '../errors.js';
 
@@ -262,13 +262,7 @@ export class SettlementKeeper {
 
     try {
       const result = await this.engine.settlePolicy(policyId);
-      return entry(
-        policyId,
-        result.outcome.status === 'Paid' ? 'settled' : 'expired',
-        result.outcome.status,
-        result.hash,
-        undefined,
-      );
+      return this.classify(policyId, result);
     } catch (cause) {
       // Still Active on chain, so a later sweep picks it up again.
       this.logger.warn(
@@ -276,6 +270,41 @@ export class SettlementKeeper {
         'keeper could not settle a policy',
       );
       return entry(policyId, 'failed', status, undefined, describeError(cause));
+    }
+  }
+
+  /**
+   * Reads a settlement the chain accepted as a sweep action.
+   *
+   * Every status is named rather than inferred from "anything but Paid means the
+   * cover lapsed": the two are the same today, but they stop being the same the
+   * moment the engine grows a status, and the difference is whether the report
+   * claims money moved. The `default` branch assigns to `never`, so adding a
+   * status to [`SettlementStatus`] fails the build here instead of quietly
+   * landing in whichever bucket the ternary happened to fall through to.
+   */
+  private classify(policyId: bigint, result: SettleResult): SweepEntry {
+    const outcome = result.outcome.status;
+
+    switch (outcome) {
+      case 'Paid':
+        return entry(policyId, 'settled', outcome, result.hash, undefined);
+      case 'Expired':
+        return entry(policyId, 'expired', outcome, result.hash, undefined);
+      case 'Pending':
+        // Unreachable from a sweep today: the keeper only submits a policy that
+        // `evaluate` called due, and that decision cannot move backwards. It is
+        // handled anyway because reporting it as an expiry would assert that
+        // cover had lapsed when the chain said nothing had changed.
+        this.logger.warn(
+          { policyId, transactionHash: result.hash },
+          'a settlement left the policy pending',
+        );
+        return entry(policyId, 'skipped', outcome, result.hash, 'cover is still open');
+      default: {
+        const unhandled: never = outcome;
+        throw new Error(`unhandled settlement status ${String(unhandled)}`);
+      }
     }
   }
 
