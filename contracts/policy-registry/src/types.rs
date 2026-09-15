@@ -40,7 +40,8 @@ pub struct Policy {
     pub premium: i128,
     pub status: PolicyStatus,
     pub created_at: u64,
-    /// Ledger timestamp of settlement; `0` while unsettled.
+    /// Ledger timestamp at which the policy reached a terminal status
+    /// (`Settled`, `Expired` or `Cancelled`); `0` while it is `Active`.
     pub settled_at: u64,
 }
 

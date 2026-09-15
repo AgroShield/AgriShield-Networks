@@ -3,7 +3,7 @@
 //! Kept separate from [`crate::PolicyRegistry`] so the invariants below are
 //! testable in isolation and the contract entry points stay thin.
 
-use soroban_sdk::{token, Address, BytesN, Env, Symbol};
+use soroban_sdk::{token, Address, BytesN, Env};
 
 use crate::error::Error;
 use crate::storage;
@@ -23,9 +23,11 @@ pub const MAX_COVERAGE_WINDOW: u64 = 180 * DAY;
 /// Bounds the cost of the overlap scan below.
 pub const MAX_POLICIES_PER_PLOT: u32 = 32;
 
-/// A payout may not exceed this multiple of the premium (in basis points).
-/// Guards the pool against a single mispriced product draining reserves.
-pub const MAX_PAYOUT_PREMIUM_RATIO_BPS: i128 = 5_000; // 50%
+/// A payout may not exceed this multiple of the premium, expressed in basis
+/// points (50_000 bps = 5x). Guards the pool against a single mispriced product
+/// draining reserves: even with a trigger probability of 1 in 5, a 5x payout is
+/// at worst break-even on premium income alone.
+pub const MAX_PAYOUT_PREMIUM_RATIO_BPS: i128 = 50_000; // 5x premium
 
 /// Validates the economic and temporal parameters of a new policy.
 #[allow(clippy::too_many_arguments)]
@@ -116,13 +118,15 @@ pub fn escrow_balance(env: &Env) -> Result<i128, Error> {
 }
 
 /// Applies a status transition, rejecting transitions out of a terminal state.
+///
+/// Every terminal status stamps `settled_at`, so an indexer can always answer
+/// "when did this policy leave the book?" — whether that was a payout, an
+/// expiry or a farmer cancellation.
 pub fn transition(policy: &mut Policy, status: PolicyStatus, now: u64) -> Result<(), Error> {
     if !policy.is_active() {
         return Err(Error::PolicyNotActive);
     }
     policy.status = status;
-    if matches!(status, PolicyStatus::Settled | PolicyStatus::Expired) {
-        policy.settled_at = now;
-    }
+    policy.settled_at = now;
     Ok(())
 }

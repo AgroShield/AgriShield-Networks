@@ -112,8 +112,8 @@ impl PolicyRegistry {
         policy::assert_no_overlapping_policy(&env, &plot_hash, coverage_start, coverage_end)?;
 
         // Cap the payout relative to premium so a single mispriced product
-        // cannot drain pooled reserves.
-        let max_payout = (premium * MAX_PAYOUT_PREMIUM_RATIO_BPS) / 100;
+        // cannot drain pooled reserves. Basis points, so divide by 10_000.
+        let max_payout = (premium * MAX_PAYOUT_PREMIUM_RATIO_BPS) / 10_000;
         if payout_amount > max_payout {
             return Err(Error::InvalidPayout);
         }
