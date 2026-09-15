@@ -1,3 +1,12 @@
 packages:
   - backend
   - frontend
+# vitest transforms TypeScript with esbuild, so its install script is allowed to
+# run. Without it pnpm skips the build and the native binary is never linked.
+allowBuilds:
+  esbuild: true
+minimumReleaseAgeExclude:
+  - '@stellar/stellar-sdk@17.1.0'
+  - '@vitest/mocker@5.0.1'
+  - '@vitest/spy@5.0.1'
+  - vitest@5.0.1
