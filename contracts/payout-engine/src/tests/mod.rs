@@ -9,11 +9,13 @@
 //! passing silently.
 //!
 //! * [`trigger`] — the pure decision table
+//! * [`properties`] — the same rule, checked against a generated reference
 //! * [`settlement`] — payouts, expiry and liability through the whole system
 //! * [`authorization`] — who may configure the engine, and what it refuses to
 //!   be configured against
 
 mod authorization;
+mod properties;
 mod settlement;
 mod trigger;
 

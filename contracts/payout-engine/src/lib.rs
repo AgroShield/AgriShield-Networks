@@ -35,6 +35,11 @@
 //! while the reading that decides it is still retained. [`PayoutEngine::expire_policy`]
 //! is the deterministic fallback once a window has closed.
 
+// The property tests drive `proptest`, which is built on `std`. Linking it for
+// the test target only keeps the deployed contract itself `no_std`.
+#[cfg(test)]
+extern crate std;
+
 mod abi;
 mod clients;
 mod error;
