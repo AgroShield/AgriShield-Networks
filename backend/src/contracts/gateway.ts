@@ -133,7 +133,11 @@ export class RpcSorobanGateway implements SorobanGateway {
   private readonly sleep: (ms: number) => Promise<void>;
 
   constructor(options: RpcGatewayOptions) {
-    this.server = new rpc.Server(options.rpcUrl, { allowHttp: options.rpcUrl.startsWith('http:') });
+    // Case-insensitively: `HTTP://host` is an http endpoint, and testing the raw
+    // prefix would leave the SDK refusing it as "insecure" for looking
+    // different, rather than for being wrong.
+    const allowHttp = options.rpcUrl.toLowerCase().startsWith('http:');
+    this.server = new rpc.Server(options.rpcUrl, { allowHttp });
     this.networkPassphrase = options.networkPassphrase;
     this.readSource = options.readSource;
     this.keeper = options.keeper;

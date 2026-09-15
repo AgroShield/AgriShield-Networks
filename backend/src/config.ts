@@ -98,6 +98,32 @@ function accountId(name: string, value: string): string {
   return value;
 }
 
+/**
+ * The Soroban RPC endpoint, checked to be a URL this client can actually use.
+ *
+ * `new rpc.Server('garbage')` throws a bare `TypeError` from the SDK, and by the
+ * time that happens `loadConfig` has returned — so a typo in this variable
+ * surfaces as an unhandled rejection with a stack trace instead of as the
+ * configuration error it is. The scheme is checked too: the node speaks JSON-RPC
+ * over http or https, and anything else would only fail later and less clearly.
+ */
+function rpcEndpoint(env: Env, name: string): string {
+  const value = required(env, name);
+
+  let parsed: URL;
+  try {
+    parsed = new URL(value);
+  } catch {
+    throw new ConfigError(`${name} is not a URL: ${JSON.stringify(value)}`);
+  }
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    throw new ConfigError(
+      `${name} must be an http or https URL but its scheme is ${parsed.protocol}`,
+    );
+  }
+  return value;
+}
+
 function integerWithin(
   env: Env,
   name: string,
@@ -154,7 +180,7 @@ export function loadConfig(env: Env = process.env): AppConfig {
 
   // Checked in the order an operator would fill them in, so the first problem
   // reported is the first one they would look at.
-  const rpcUrl = required(env, 'SOROBAN_RPC_URL');
+  const rpcUrl = rpcEndpoint(env, 'SOROBAN_RPC_URL');
   const addresses = {
     registry: contractId(env, 'POLICY_REGISTRY_CONTRACT_ID'),
     engine: contractId(env, 'PAYOUT_ENGINE_CONTRACT_ID'),

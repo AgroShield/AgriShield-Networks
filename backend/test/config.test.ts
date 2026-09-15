@@ -23,6 +23,26 @@ describe('loadConfig', () => {
     expect(() => loadConfig(env)).toThrow(/SOROBAN_RPC_URL is required/);
   });
 
+  it('rejects an RPC URL that is not a URL', () => {
+    // The SDK's own `new rpc.Server('rpc.test')` throws a bare `TypeError`, long
+    // after configuration was reported as good.
+    const env = { ...testEnv(), SOROBAN_RPC_URL: 'rpc.test' };
+
+    expect(() => loadConfig(env)).toThrow(/SOROBAN_RPC_URL is not a URL/);
+  });
+
+  it('rejects an RPC endpoint it could not speak to', () => {
+    const env = { ...testEnv(), SOROBAN_RPC_URL: 'ws://rpc.test' };
+
+    expect(() => loadConfig(env)).toThrow(/must be an http or https URL/);
+  });
+
+  it('keeps an http endpoint, which is what a local node serves', () => {
+    const config = loadConfig({ ...testEnv(), SOROBAN_RPC_URL: 'HTTP://localhost:8000/soroban/rpc' });
+
+    expect(config.soroban.rpcUrl).toBe('HTTP://localhost:8000/soroban/rpc');
+  });
+
   it('rejects a contract id that is not a strkey', () => {
     const env = { ...testEnv(), POLICY_REGISTRY_CONTRACT_ID: 'Ctruncated' };
 
