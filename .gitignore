@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+dist/
+build/
+out/
+.next/
+*.tsbuildinfo
+
+# Rust / Soroban
+target/
+**/target/
+contracts/**/test_snapshots/
+
+# Environment
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Coverage / reports
+coverage/
+*.lcov
+test-results/
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Editors / OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Generated deploy artifacts that are environment specific
+deployed-addresses.local.json
