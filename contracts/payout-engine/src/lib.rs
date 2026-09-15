@@ -49,7 +49,10 @@ pub use crate::clients::{
     PremiumPoolClient, PremiumPoolInterface,
 };
 pub use crate::error::Error;
-pub use crate::events::{ContractsConfigured, PolicyLiabilityRegistered, PolicyLiabilityReleased};
+pub use crate::events::{
+    ContractsConfigured, PolicyExpired, PolicyLiabilityRegistered, PolicyLiabilityReleased,
+    PolicyPaid,
+};
 pub use crate::storage::DataKey;
 pub use crate::trigger::{evaluate_terms, find_trigger, Decision};
 pub use crate::types::{Contracts, SettlementOutcome, SettlementStatus, TriggerEvaluation};
@@ -99,6 +102,71 @@ impl PayoutEngine {
         admin.require_auth();
         storage::require_admin(&env, &admin)?;
         apply_contracts(&env, policy_registry, premium_pool, oracle)
+    }
+
+    // -----------------------------------------------------------------------
+    // Settlement
+    // -----------------------------------------------------------------------
+
+    /// Settles a policy against the region's finalized index history.
+    ///
+    /// Pays the farmer when the index breached the policy's threshold inside the
+    /// coverage window, expires the policy when the window closed without a
+    /// breach, and reports `Pending` when nothing is due yet. Retrying a
+    /// `Pending` policy later is harmless; retrying a settled one fails because
+    /// the policy is no longer active.
+    ///
+    /// Permissionless: settlement is keeper work, not privileged work, so a
+    /// stalled operator cannot strand a farmer's claim. Forgery is still
+    /// impossible, because the registry and the pool each independently verify
+    /// that the *calling contract* is their registered payout engine.
+    pub fn settle_policy(env: Env, policy_id: u64) -> Result<SettlementOutcome, Error> {
+        let policy = load_active_policy(&env, policy_id)?;
+        let history = load_history(&env, &policy.region_id)?;
+        let decision = trigger::evaluate_terms(
+            &history,
+            policy.coverage_start,
+            policy.coverage_end,
+            policy.trigger_threshold,
+            env.ledger().timestamp(),
+        );
+
+        match decision {
+            trigger::Decision::Triggered(reading) => {
+                pay(&env, &policy, &reading)?;
+                Ok(SettlementOutcome {
+                    policy_id,
+                    status: SettlementStatus::Paid,
+                    index_value: reading.index_value,
+                    reading_timestamp: reading.timestamp,
+                    paid_amount: policy.payout_amount,
+                })
+            }
+            trigger::Decision::Expired => {
+                expire(&env, &policy)?;
+                Ok(SettlementOutcome::closed(
+                    policy_id,
+                    SettlementStatus::Expired,
+                ))
+            }
+            trigger::Decision::Pending => Ok(SettlementOutcome::closed(
+                policy_id,
+                SettlementStatus::Pending,
+            )),
+        }
+    }
+
+    /// Expires a policy whose coverage window closed without a trigger.
+    ///
+    /// Exposed separately from [`Self::settle_policy`] so a keeper can force the
+    /// deterministic path — and release the pool's liability — without waiting
+    /// for the region's readings to age out of the oracle's bounded history.
+    pub fn expire_policy(env: Env, policy_id: u64) -> Result<(), Error> {
+        let policy = load_active_policy(&env, policy_id)?;
+        if env.ledger().timestamp() <= policy.coverage_end {
+            return Err(Error::CoverageStillOpen);
+        }
+        expire(&env, &policy)
     }
 
     // -----------------------------------------------------------------------
@@ -245,6 +313,76 @@ fn load_history(env: &Env, region_id: &Symbol) -> Result<Vec<IndexReading>, Erro
         Ok(Ok(history)) => Ok(history),
         _ => Err(Error::OracleCallFailed),
     }
+}
+
+/// Pays a triggered claim and then marks the policy settled.
+///
+/// The order is load-bearing: the farmer is paid *before* the registry records
+/// the policy as settled. Marking it first would let a failed transfer leave a
+/// policy that reads as paid but never actually paid.
+fn pay(env: &Env, policy: &Policy, reading: &IndexReading) -> Result<(), Error> {
+    let me = env.current_contract_address();
+    let pool = clients::PremiumPoolClient::new(env, &storage::get_premium_pool(env)?);
+
+    // The payout reduces the pool's recognised liability by the amount paid, so
+    // liability has to be on the books first: paying a policy whose payout was
+    // never recognised would silently consume the cover held for another one.
+    if !storage::liability_registered(env, policy.id) {
+        match pool.try_accrue_liability(&me, &policy.payout_amount) {
+            Ok(Ok(())) => {}
+            _ => return Err(Error::PoolCallFailed),
+        }
+        storage::mark_liability_registered(env, policy.id);
+    }
+
+    match pool.try_release_payout(&me, &policy.farmer, &policy.payout_amount) {
+        Ok(Ok(())) => {}
+        _ => return Err(Error::PoolCallFailed),
+    }
+    storage::clear_liability_registered(env, policy.id);
+
+    let registry = clients::PolicyRegistryClient::new(env, &storage::get_policy_registry(env)?);
+    match registry.try_mark_settled(&me, &policy.id) {
+        Ok(Ok(())) => {}
+        _ => return Err(Error::RegistryCallFailed),
+    }
+
+    events::policy_paid(
+        env,
+        &PolicyPaid {
+            policy_id: policy.id,
+            farmer: policy.farmer.clone(),
+            payout_amount: policy.payout_amount,
+            index_value: reading.index_value,
+            reading_timestamp: reading.timestamp,
+        },
+    );
+    Ok(())
+}
+
+/// Marks a policy expired and stops reserving capital for it.
+///
+/// The registry moves first and the liability is released second. If the release
+/// then failed, the pool would be left over-collateralised — recoverable, and on
+/// the safe side. Releasing first would leave a live policy whose backing capital
+/// had already been freed, so the failure would be a real hole.
+fn expire(env: &Env, policy: &Policy) -> Result<(), Error> {
+    // `expire_policy` is permissionless on the registry, so unlike the payout
+    // path this one needs no caller identity to present.
+    let registry = clients::PolicyRegistryClient::new(env, &storage::get_policy_registry(env)?);
+    match registry.try_expire_policy(&policy.id) {
+        Ok(Ok(())) => {}
+        _ => return Err(Error::RegistryCallFailed),
+    }
+    release_liability_if_registered(env, policy)?;
+
+    events::policy_expired(
+        env,
+        &PolicyExpired {
+            policy_id: policy.id,
+        },
+    );
+    Ok(())
 }
 
 /// Releases the pool liability carried for `policy`, if any.

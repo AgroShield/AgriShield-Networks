@@ -35,6 +35,19 @@ pub struct SettlementOutcome {
     pub paid_amount: i128,
 }
 
+impl SettlementOutcome {
+    /// An outcome that moved no money and decided on no reading.
+    pub fn closed(policy_id: u64, status: SettlementStatus) -> Self {
+        SettlementOutcome {
+            policy_id,
+            status,
+            index_value: 0,
+            reading_timestamp: 0,
+            paid_amount: 0,
+        }
+    }
+}
+
 /// Read-only preview of what settlement would do right now.
 ///
 /// Safe to call for every policy in a region in one keeper pass, because it
