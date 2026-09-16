@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AgriShield API</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 3rem 1.5rem;
+        font: 16px/1.6 ui-sans-serif, system-ui, -apple-system, sans-serif;
+        background: #10150f;
+        color: #e8efe4;
+      }
+      main {
+        max-width: 40rem;
+        margin: 0 auto;
+      }
+      h1 {
+        font-size: 1.35rem;
+        margin: 0 0 0.25rem;
+      }
+      p,
+      li {
+        color: #b6c2ae;
+      }
+      code {
+        background: #1d241b;
+        padding: 0.1rem 0.35rem;
+        border-radius: 4px;
+        color: #d6e6cd;
+      }
+      .note {
+        border-left: 3px solid #5b7a4a;
+        padding-left: 0.9rem;
+        margin-top: 1.75rem;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>AgriShield API</h1>
+      <p>
+        This host serves the read-only HTTP API for the AgriShield parametric
+        insurance contracts on Stellar testnet. It renders no interface — the
+        operator console is a separate deployment.
+      </p>
+      <ul>
+        <li><code>GET /api/health</code> — network, contract addresses, node reachability</li>
+        <li><code>GET /api/policies?farmer=G…</code> or <code>?region=…</code> — live policies</li>
+        <li><code>GET /api/settlements/…</code> — what settlement would do right now</li>
+      </ul>
+      <div class="note">
+        <p>
+          Every query reads the contracts directly, so the answers are the chain's,
+          not a cache's. There is no settlement keeper here: a keeper is an interval
+          that submits transactions, and a function has no life between requests to
+          run one in. That is also why no signing key is configured on this host —
+          it can read everything and move nothing.
+        </p>
+      </div>
+    </main>
+  </body>
+</html>

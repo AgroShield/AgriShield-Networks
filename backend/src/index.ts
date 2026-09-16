@@ -4,16 +4,15 @@
  * Wiring order matters: configuration is validated before anything is built, the
  * app is created before the keeper because the keeper logs through it, and the
  * keeper is started before the server accepts traffic so a deployment is either
- * fully up or not up at all.
+ * fully up or not up at all. That order lives in `buildApp`; what is left here is
+ * everything that only makes sense for a long-lived process: starting the keeper
+ * and handling the signals that stop it.
+ *
+ * A serverless deployment does not run this file. See `api/[...path].ts`.
  */
 
-import { Keypair } from '@stellar/stellar-sdk';
-
 import { ConfigError, loadConfig, type AppConfig } from './config.js';
-import { createContracts } from './contracts/clients.js';
-import { RpcSorobanGateway } from './contracts/gateway.js';
-import { SettlementKeeper } from './keeper/keeper.js';
-import { createApp, registerRoutes } from './server.js';
+import { buildApp } from './app.js';
 
 async function main(): Promise<void> {
   let config: AppConfig;
@@ -30,38 +29,7 @@ async function main(): Promise<void> {
     throw cause;
   }
 
-  const keeperKey =
-    config.soroban.keeperSecret === undefined
-      ? undefined
-      : Keypair.fromSecret(config.soroban.keeperSecret);
-
-  const gateway = new RpcSorobanGateway({
-    rpcUrl: config.soroban.rpcUrl,
-    networkPassphrase: config.soroban.networkPassphrase,
-    readSource: config.soroban.readSource,
-    keeper: keeperKey,
-  });
-  const contracts = createContracts(gateway, config.soroban.addresses);
-
-  const app = createApp(config);
-
-  const keeper = config.keeper.enabled
-    ? new SettlementKeeper({
-        registry: contracts.registry,
-        engine: contracts.engine,
-        intervalMs: config.keeper.intervalMs,
-        batchSize: config.keeper.batchSize,
-        logger: app.log,
-      })
-    : undefined;
-
-  registerRoutes(app, {
-    gateway,
-    contracts,
-    addresses: config.soroban.addresses,
-    network: config.soroban.network,
-    keeper,
-  });
+  const { app, keeper } = buildApp(config);
 
   keeper?.start();
 
