@@ -23,6 +23,7 @@
     "test:contracts": "cargo test --workspace",
     "lint:contracts": "cargo clippy --workspace --all-targets -- -D warnings",
     "fmt:contracts": "cargo fmt --all -- --check",
+    "check:release-profile": "./scripts/check-release-profile.sh",
     "deploy:testnet": "./scripts/deploy-testnet.sh"
   }
 }
