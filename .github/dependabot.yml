@@ -1,0 +1,55 @@
+version: 2
+updates:
+  # The Soroban SDK's minor releases track protocol versions, so a bump is
+  # rarely routine: it can change what the runtime accepts. Grouped and weekly
+  # rather than per-patch, so that a protocol bump arrives as one reviewable
+  # change instead of a drip of them.
+  - package-ecosystem: cargo
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      soroban:
+        patterns:
+          - "soroban-*"
+          - "stellar-xdr"
+    commit-message:
+      prefix: build
+    labels:
+      - "area/contracts"
+
+  # One lockfile at the root covers backend and frontend through the pnpm
+  # workspace, so one entry is enough.
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      react:
+        patterns:
+          - "react"
+          - "react-dom"
+          - "@types/react*"
+      vite-and-testing:
+        patterns:
+          - "vite"
+          - "vitest"
+          - "@vitejs/*"
+          - "@testing-library/*"
+    commit-message:
+      prefix: build
+    labels:
+      - "area/backend"
+
+  # Actions are pinned to major tags, so this is what keeps them current; a
+  # stale major shows up as a deprecation warning on every job.
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: ci
+    labels:
+      - "area/ci"

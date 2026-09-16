@@ -1,0 +1,79 @@
+name: Feature or design proposal
+description: Propose a change in behaviour, or raise a question about how something should work
+title: "[proposal] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before writing this up, it is worth knowing that most of what looks like a
+        missing check in this repository is a deliberate choice. Each contract's
+        `src/lib.rs` opens with the invariants it holds and the trust model it
+        assumes — [SECURITY.md](https://github.com/AgroShield/AgriShield-Networks/blob/main/SECURITY.md)
+        summarises them. If your proposal argues against one of those, say so
+        explicitly; that is a design discussion, which is welcome, and it is
+        better to have it before code is written.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: |
+        What is wrong today, from the point of view of someone affected by it.
+        Describe the problem rather than the solution you have in mind; the
+        problem is the part that has to be agreed before the solution matters.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you propose
+      description: A sketch is enough. If there are alternatives you rejected, say why.
+    validations:
+      required: false
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Where would this land?
+      options:
+        - contracts (a Soroban contract)
+        - backend (the indexer/API)
+        - frontend (the console)
+        - scripts (deploy or build tooling)
+        - documentation
+        - not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: invariants
+    attributes:
+      label: Does this affect an invariant?
+      description: |
+        Anything touching settlement, solvency, the oracle's consensus rule, or
+        who is allowed to move money. If yes, name the invariant and say what
+        should change about it — that is the conversation worth having first.
+    validations:
+      required: false
+
+  - type: textarea
+    id: fees
+    attributes:
+      label: Cost impact
+      description: |
+        If this adds storage reads, writes or cross-contract calls to a path that
+        runs often, note roughly how much. The guards in
+        `contracts/*/src/tests/fees.rs` will notice either way, but a reviewer
+        reads the explanation first.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: willing
+    attributes:
+      label: Would you write it?
+      options:
+        - label: I would be willing to open a pull request for this
+        - label: I would like help working out the approach first

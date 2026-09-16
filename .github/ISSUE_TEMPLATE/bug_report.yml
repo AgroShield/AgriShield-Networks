@@ -1,0 +1,100 @@
+name: Bug report
+description: Something behaves differently from what it is documented to do
+title: "[bug] "
+labels: ["bug", "needs reproduction"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report this.
+
+        **Never paste a secret key, seed phrase, or anything beginning `S`.**
+        Issues are public and permanent. If you have already exposed a key,
+        treat it as compromised and move the funds it controls.
+
+        For a security problem, stop here and use
+        [the private report form](https://github.com/AgroShield/AgriShield-Networks/security/advisories/new)
+        instead — see [SECURITY.md](https://github.com/AgroShield/AgriShield-Networks/blob/main/SECURITY.md).
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Where is it?
+      description: Pick the part of the repository you were using.
+      options:
+        - contracts (a Soroban contract)
+        - backend (the indexer/API)
+        - frontend (the console)
+        - scripts (deploy or build tooling)
+        - documentation
+        - not sure
+    validations:
+      required: true
+
+  - type: input
+    id: component
+    attributes:
+      label: Which contract, command, or screen
+      description: The entry point or file, as specifically as you can.
+      placeholder: e.g. policy-registry create_policy, or `pnpm deploy:testnet`
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you did, what you saw, and why it is wrong.
+      placeholder: |
+        I did …
+        I expected …
+        Instead …
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: How to reproduce it
+      description: |
+        Exact commands if you can. A failing test is the most useful thing you
+        can give us — it is unambiguous and it becomes the regression test.
+      placeholder: |
+        1. …
+        2. …
+      render: shell
+    validations:
+      required: false
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected instead
+      description: If the contracts document an invariant that this breaks, quote it.
+    validations:
+      required: false
+
+  - type: input
+    id: network
+    attributes:
+      label: Network and transaction
+      description: |
+        If it happened on a network, the network and a transaction hash or
+        contract id. A hash lets us look at the actual failure.
+      placeholder: e.g. testnet, 237f5622ffa109bf1a8e3a9a296155547f28cf3896b1b24ccb2f3ed2d13c49b0
+    validations:
+      required: false
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Versions, if they seem relevant. `pnpm test` and `pnpm typecheck` results help too.
+      placeholder: |
+        node --version
+        pnpm --version
+        rustc --version
+        stellar --version
+      render: shell
+    validations:
+      required: false
