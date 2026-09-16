@@ -25,6 +25,9 @@ coverage/
 *.lcov
 test-results/
 
+# Vercel project link, written by `vercel link`
+.vercel/
+
 # Logs
 *.log
 npm-debug.log*
@@ -39,3 +42,5 @@ Thumbs.db
 
 # Generated deploy artifacts that are environment specific
 deployed-addresses.local.json
+.vercel
+.env*
