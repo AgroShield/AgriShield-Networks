@@ -25,7 +25,7 @@ on:
 
 jobs:
   release-profile:
-    name: release profile builds for wasm32
+    name: release profile and reproducible wasm
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -35,6 +35,10 @@ jobs:
 
       - name: Build the release profile for wasm32
         run: ./scripts/check-release-profile.sh
+
+      # Shares the build above, so this costs one rebuild rather than two.
+      - name: Rebuild into a second target directory and compare
+        run: ./scripts/check-wasm-reproducible.sh
 
   test:
     name: contract tests

@@ -24,6 +24,7 @@
     "lint:contracts": "cargo clippy --workspace --all-targets -- -D warnings",
     "fmt:contracts": "cargo fmt --all -- --check",
     "check:release-profile": "./scripts/check-release-profile.sh",
+    "check:wasm-reproducible": "./scripts/check-wasm-reproducible.sh",
     "deploy:testnet": "./scripts/deploy-testnet.sh"
   }
 }

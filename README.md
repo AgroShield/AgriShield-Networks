@@ -80,6 +80,7 @@ pnpm test:contracts          # cargo test --workspace
 pnpm lint:contracts          # cargo clippy --workspace --all-targets -- -D warnings
 pnpm fmt:contracts           # cargo fmt --all -- --check
 pnpm check:release-profile   # builds the release profile for wasm32
+pnpm check:wasm-reproducible # rebuilds the wasm elsewhere and compares hashes
 ```
 
 The contracts build for `wasm32-unknown-unknown` (see `rust-toolchain.toml`).
@@ -98,6 +99,14 @@ of what the table says, and no test or debug build opens it at all. A typo
 therefore waits for the release build a deployment runs — which is how
 `strip = "symbol"` (rustc wants `symbols`) sat in this repository. Building it on
 every push moves that failure to where it can still be fixed cheaply.
+
+The reproducibility check covers the other direction. A deployed contract is
+only checkable if rebuilding its source produces the same bytes, so the script
+builds the wasm a second time in a different target directory and compares the
+hashes; a disagreement means an artefact can no longer be traced back to the
+source it claims to be. It passes because the release profile strips symbols and
+debug info, which keeps the target directory's path out of the binary — the
+usual reason two builds of identical sources differ.
 
 ## Deploying to testnet
 
