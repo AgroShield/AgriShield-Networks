@@ -1,0 +1,37 @@
+name: contracts
+
+# The release profile is only exercised by a release build, so nothing in the
+# default profile can catch a bad value in it. This runs the one build that
+# reads it, for the target the contracts are deployed to.
+on:
+  push:
+    branches: [main]
+    paths:
+      - Cargo.toml
+      - Cargo.lock
+      - rust-toolchain.toml
+      - contracts/**
+      - scripts/check-release-profile.sh
+      - .github/workflows/contracts.yml
+  pull_request:
+    paths:
+      - Cargo.toml
+      - Cargo.lock
+      - rust-toolchain.toml
+      - contracts/**
+      - scripts/check-release-profile.sh
+      - .github/workflows/contracts.yml
+  workflow_dispatch:
+
+jobs:
+  release-profile:
+    name: release profile builds for wasm32
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Add the wasm32 target
+        run: rustup target add wasm32-unknown-unknown
+
+      - name: Build the release profile for wasm32
+        run: ./scripts/check-release-profile.sh
