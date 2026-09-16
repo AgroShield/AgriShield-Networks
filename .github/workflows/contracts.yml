@@ -35,3 +35,14 @@ jobs:
 
       - name: Build the release profile for wasm32
         run: ./scripts/check-release-profile.sh
+
+  test:
+    name: contract tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Host tests, so the wasm target is not involved; the toolchain and its
+      # components come from rust-toolchain.toml.
+      - name: Run the contract test suite
+        run: cargo test --workspace
