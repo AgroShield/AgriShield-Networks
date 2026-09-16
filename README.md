@@ -1,5 +1,10 @@
 # AgriShield-Networks
 
+[![Watch the demo](https://img.shields.io/badge/watch_the_demo-2_minute_pitch-1f6f4a?style=for-the-badge)](https://github.com/AgroShield/AgriShield-Networks/releases/download/v1.0.0/agrishield-demo.mp4)
+[![Tests](https://img.shields.io/badge/tests-395_passing-1f6f4a?style=flat-square)](https://github.com/AgroShield/AgriShield-Networks/actions)
+[![Network](https://img.shields.io/badge/network-stellar_testnet-1f6f4a?style=flat-square)](#live-deployment)
+[![Licence](https://img.shields.io/badge/licence-MIT-1f6f4a?style=flat-square)](LICENSE)
+
 AgriShield is an open-source Stellar/Soroban parametric insurance platform that
 automatically pays smallholder farmers when oracle-verified weather or satellite
 data confirms a drought or flood, replacing slow, fraud-prone manual claims with
@@ -15,6 +20,20 @@ for the addresses, the transactions that prove they work, and the console.
 | Network | Stellar testnet |
 | Contracts | 4 deployed, wired and initialized — [proof](#live-deployment) |
 | Tests | 279 contracts · 88 backend · 28 frontend |
+| Demo | **▶ [2-minute walkthrough](https://github.com/AgroShield/AgriShield-Networks/releases/download/v1.0.0/agrishield-demo.mp4)** — 1080p, 10.5 MB, narrated |
+
+## Watch the pitch
+
+[![AgriShield in two minutes — click to watch the walkthrough](docs/media/agrishield-demo-poster.jpg)](https://github.com/AgroShield/AgriShield-Networks/releases/download/v1.0.0/agrishield-demo.mp4)
+
+**▶ [Download the MP4](https://github.com/AgroShield/AgriShield-Networks/releases/download/v1.0.0/agrishield-demo.mp4)** — 2:13, 1920×1080, 10.5 MB.
+
+Two minutes on the problem, the mechanism and the evidence. It is recorded
+against the **live console reading Stellar testnet** and the contracts deployed
+below, not against slides or a mock: the policy it settles a claim on is real
+chain state, and the test output on screen is this tree's. Every frame can be
+traced back to a command in [docs/video](docs/video), which is how it is
+regenerated rather than re-recorded.
 
 ## Features
 

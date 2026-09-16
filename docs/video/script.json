@@ -1,0 +1,128 @@
+{
+  "fps": 30,
+  "crossfade": 0.6,
+  "lead": 0.6,
+  "note": "Narration is written to fit each scene, not the other way round: scene length is derived from the generated speech, so the visuals follow the voice.",
+  "scenes": [
+    {
+      "id": "s1",
+      "narration": "Smallholder farmers lose a season's income to drought, and the insurance meant to protect them rarely reaches them in time.",
+      "parts": [
+        {
+          "type": "card",
+          "name": "s1-title",
+          "weight": 1,
+          "motion": "in"
+        }
+      ]
+    },
+    {
+      "id": "s2",
+      "narration": "A payout usually means an assessor, a form, and a wait measured in months. Proving a loss can cost more than the plot is worth. And when payment depends on someone's judgement, the farmer carries that uncertainty too.",
+      "parts": [
+        {
+          "type": "card",
+          "name": "s2-problem",
+          "weight": 1,
+          "motion": "pan-r"
+        }
+      ]
+    },
+    {
+      "id": "s3",
+      "narration": "AgriShield replaces the claim with a rule. Cover is written against a regional drought index. The registry escrows the premium and holds the terms, and three oracle signers publish the index. When it breaches the threshold inside the cover window, the payout engine pays, on chain, with nobody approving it.",
+      "parts": [
+        {
+          "type": "card",
+          "name": "s3-architecture",
+          "weight": 0.46,
+          "motion": "in"
+        },
+        {
+          "type": "card",
+          "name": "s3b-trust",
+          "weight": 0.54,
+          "motion": "pan-r"
+        }
+      ]
+    },
+    {
+      "id": "s4",
+      "narration": "This is the live console, reading Stellar testnet. An operator looks up a farmer's book of cover. Policy two is active: maize in Kaduna, cover open through September, paying at an index of three hundred or less.",
+      "parts": [
+        {
+          "type": "card",
+          "name": "s4-console",
+          "weight": 0.42,
+          "motion": "pan-l"
+        },
+        {
+          "type": "video",
+          "path": "assets/video",
+          "weight": 1,
+          "trimStart": 0.8
+        }
+      ]
+    },
+    {
+      "id": "s5",
+      "narration": "Before anyone commits, the engine answers. This index fell to two hundred and fifty, inside the cover window, so settlement is already paid. That is the contract's own decision, read back from the chain, not something the interface invented.",
+      "parts": [
+        {
+          "type": "card",
+          "name": "s5-detail",
+          "weight": 1,
+          "motion": "in"
+        }
+      ]
+    },
+    {
+      "id": "s6",
+      "narration": "It's built like production software. Two hundred and seventy-nine contract tests, eighty-eight backend, twenty-eight on the console, plus fee tests that fail if a settlement ever gets more expensive as history grows.",
+      "parts": [
+        {
+          "type": "card",
+          "name": "s6-tests",
+          "weight": 1,
+          "motion": "pan-r"
+        }
+      ]
+    },
+    {
+      "id": "s7",
+      "narration": "Four contracts are deployed and wired on testnet, and every one of them rebuilds byte for byte from this repository. Settlement no longer scales with the region's history: ninety-two percent less CPU than the naive path.",
+      "parts": [
+        {
+          "type": "card",
+          "name": "s7-proof",
+          "weight": 1,
+          "motion": "out"
+        }
+      ]
+    },
+    {
+      "id": "s8",
+      "narration": "Cheap enough to cover a single hectare. Clear enough that a farmer can check the outcome without asking anyone. And open, so new regions, crops and oracles are additions rather than rewrites.",
+      "parts": [
+        {
+          "type": "card",
+          "name": "s8-value",
+          "weight": 1,
+          "motion": "in"
+        }
+      ]
+    },
+    {
+      "id": "s9",
+      "narration": "The console is live. The contracts are on testnet. AgriShield. Drought cover that pays itself.",
+      "parts": [
+        {
+          "type": "card",
+          "name": "s9-close",
+          "weight": 1,
+          "motion": "out"
+        }
+      ]
+    }
+  ]
+}

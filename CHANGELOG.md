@@ -56,6 +56,11 @@ still pre-1.0 — the `0.x` line reserves the right to change behaviour.
 - `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`, issue forms, a pull
   request template, `docs/TRIAGE.md` and Dependabot configuration.
 - `vercel.json`, so the console builds from the workspace root.
+- A two-minute pitch video, attached to the v1.0.0 release and linked from the
+  README. `docs/video/` holds the pipeline that produces it, so the recording is
+  regenerated from the deployed system rather than re-edited by hand: the console
+  footage is captured from the live deployment, the callout positions are measured
+  from its DOM, and the narration timings drive the edit.
 
 ### Deployed
 
