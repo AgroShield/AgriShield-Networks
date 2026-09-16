@@ -76,11 +76,60 @@ to be allowed in front of the API.
 ## Development
 
 ```bash
-pnpm test:contracts    # cargo test --workspace
-pnpm lint:contracts    # cargo clippy --workspace --all-targets -- -D warnings
-pnpm fmt:contracts     # cargo fmt --all -- --check
+pnpm test:contracts          # cargo test --workspace
+pnpm lint:contracts          # cargo clippy --workspace --all-targets -- -D warnings
+pnpm fmt:contracts           # cargo fmt --all -- --check
+pnpm check:release-profile   # builds the release profile for wasm32
 ```
 
 The contracts build for `wasm32-unknown-unknown` (see `rust-toolchain.toml`).
 Every contract is `no_std` and returns a typed error code rather than trapping,
 so callers and the backend get a deterministic reason a call failed.
+
+## Checks
+
+CI runs the commands above, plus `pnpm typecheck` and `pnpm test` for the backend
+and the frontend, so every one of them is reproducible locally.
+
+The one worth naming is the release-profile build, because nothing else covers it.
+Every value in `[profile.release]` is a rustc codegen option, and rustc only reads
+the table while compiling in that profile: `cargo metadata` exits zero regardless
+of what the table says, and no test or debug build opens it at all. A typo
+therefore waits for the release build a deployment runs — which is how
+`strip = "symbol"` (rustc wants `symbols`) sat in this repository. Building it on
+every push moves that failure to where it can still be fixed cheaply.
+
+## Deploying to testnet
+
+`scripts/deploy-testnet.sh` deploys the four contracts and wires them together.
+It needs the [Stellar CLI](https://developers.stellar.org/docs/tools/cli) on
+`PATH`, and `--dry-run` prints every command without touching a network.
+
+| Variable | Required | Meaning |
+| --- | --- | --- |
+| `STELLAR_SOURCE` | yes | the admin's identity name or secret key; it signs every call |
+| `ADMIN_ADDRESS` | yes | the admin's `G...` address, belonging to that source |
+| `PREMIUM_TOKEN_ID` | yes | the token the registry escrows and the pool custodies, as `C...` |
+| `ORACLE_THRESHOLD` | yes | distinct signers a reading needs to finalize, between 1 and the signer count |
+| `ORACLE_SIGNERS` | yes | the authorised signers, space separated, at most 15 |
+| `MIN_SOLVENCY_RATIO_BPS` | no | floor the pool enforces on withdrawals, `1..=1000000` (default `12000`) |
+| `STELLAR_NETWORK` | no | a network the CLI knows, or a passphrase (default `testnet`) |
+| `ENV_OUT` | no | file to append the resulting addresses to |
+
+```bash
+STELLAR_SOURCE=admin ADMIN_ADDRESS=G... PREMIUM_TOKEN_ID=C... \
+  ORACLE_THRESHOLD=2 ORACLE_SIGNERS="G... G... G..." \
+  ./scripts/deploy-testnet.sh
+```
+
+The wiring order is forced rather than chosen. The registry and the pool each
+refuse a payout unless the caller is the engine address they were told about, so
+neither can be pointed anywhere until the engine exists; the engine's own
+`initialize` then takes all three of the others. The engine is therefore deployed
+before it is registered, and initialized last.
+
+A threshold above the signer count is rejected before anything is deployed,
+because it is unsatisfiable: the oracle would accept submissions and finalize
+nothing. The script is not idempotent — each run deploys a fresh set of contracts
+— and it prints the four addresses in the shape `backend/.env` expects, appending
+them to `ENV_OUT` when that is set.
