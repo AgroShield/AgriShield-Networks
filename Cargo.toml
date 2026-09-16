@@ -26,4 +26,7 @@ codegen-units = 1
 panic = "abort"
 overflow-checks = true
 debug = 0
-strip = "symbol"
+# `symbols`, not `symbol`: cargo accepts none | debuginfo | symbols, and the
+# singular spelling fails the release build outright — which is the profile a
+# deployment uses, so nothing else would have caught it.
+strip = "symbols"
