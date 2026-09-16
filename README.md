@@ -11,9 +11,10 @@ for the addresses, the transactions that prove they work, and the console.
 | | |
 | --- | --- |
 | Console | **https://frontend-eight-delta-o0pj7gck3j.vercel.app** |
+| API | **https://agrishield-backend-phi.vercel.app** — live, read-only, no signing key configured |
 | Network | Stellar testnet |
 | Contracts | 4 deployed, wired and initialized — [proof](#live-deployment) |
-| Tests | 277 contracts · 88 backend · 28 frontend |
+| Tests | 279 contracts · 88 backend · 28 frontend |
 
 ## Features
 
@@ -100,11 +101,15 @@ estimated, with the guards in `contracts/*/src/tests/fees.rs`:
 | --- | --- | --- |
 | A signer's submission, region at its history cap | 1,158,557 | **541,698** CPU instructions (−53%) |
 | Paying a claim | 369,707 | **308,445** CPU instructions (−17%) |
+| Settling a policy in a region with a full history its window excludes | 1,940,118 | **156,535** CPU instructions (−92%) |
 
-The submission path used to read every retained reading to answer a question
-about a single instant; it now reads one entry. The payout path used to ask the
-token contract for a balance it could already derive. Neither is visible as a
-bug — both were correct, and merely expensive.
+All three were correct and merely expensive, which is why none of them was
+visible as a bug. The submission path read every retained reading to answer a
+question about one instant. The payout path asked the token contract for a
+balance it could already derive. And settlement moved a season's worth of
+readings across a contract boundary so the decision procedure could discard most
+of them — which mattered most, because settlement is retried per policy, per
+keeper round, and that cost grew with how long a region had been publishing.
 
 ### Operable
 
@@ -126,21 +131,30 @@ of `scripts/deploy-testnet.sh`; no step was done by hand.
 
 **https://frontend-eight-delta-o0pj7gck3j.vercel.app**
 
-The interface is live and current. It is served **without a backend**: the
-console is a static build on Vercel, and no instance of `backend/` is deployed,
-so its data panels report the API as unreachable and show their error state
-rather than figures. That is a deliberate choice about scope, not a broken
-deploy — the contract views it reads are all reachable directly, and the
-addresses below are what a backend would be pointed at.
+The interface is live and current, and it has data: it reads the contracts
+through a deployed instance of `backend/`, served from the API host above. The
+console proxies `/api` to it, so the browser only ever talks to its own origin —
+which matters, because the backend sets no CORS headers by design and a direct
+cross-origin call would have its responses refused.
+
+The API is **read-only**. Omitting `KEEPER_SECRET_KEY` is what disables the
+keeper, and it is also what keeps a signing key out of the hosting provider's
+environment entirely — so this deployment can answer every query and move
+nothing. `GET /api/health` reports `keeper: {enabled: false}` rather than leaving
+it to be discovered. Every answer is read from the chain on the way through, so
+what the console shows is the contracts' state, not a cache's.
+
+Running the keeper needs a host with a process that lives between requests;
+`buildApp` is shared by both entrypoints, so the same code runs there unchanged.
 
 ### Contracts
 
 | Contract | Address |
 | --- | --- |
-| `policy-registry` | [`CAN7X4RP52AOCOTZGET2XJ6ZWIAFDGKCXLRJ2N6HYB3PGOKN3FMMRGIZ`](https://stellar.expert/explorer/testnet/contract/CAN7X4RP52AOCOTZGET2XJ6ZWIAFDGKCXLRJ2N6HYB3PGOKN3FMMRGIZ) |
-| `payout-engine` | [`CBRMJH34GW32J5CLR3NDVB2QRNSOHW6WCBCKPJSMDXNWQU2FX6A6IVSB`](https://stellar.expert/explorer/testnet/contract/CBRMJH34GW32J5CLR3NDVB2QRNSOHW6WCBCKPJSMDXNWQU2FX6A6IVSB) |
-| `premium-pool` | [`CBSACYW6UT34KPR5QYRUQLS6LRA6OC6IFUEHTGSBV5LF7RCMF4MPTQMS`](https://stellar.expert/explorer/testnet/contract/CBSACYW6UT34KPR5QYRUQLS6LRA6OC6IFUEHTGSBV5LF7RCMF4MPTQMS) |
-| `oracle-adapter` | [`CBJANXSC7Z5DE7U5RE3UFIT2DVHSKXU6U5N2IJVK4SQ67XZYAYTWZTYU`](https://stellar.expert/explorer/testnet/contract/CBJANXSC7Z5DE7U5RE3UFIT2DVHSKXU6U5N2IJVK4SQ67XZYAYTWZTYU) |
+| `policy-registry` | [`CDBHGAUHDNPATEWKI4QKVEDUFY4Z3KNM3U5Q24SN5O4WNWOCJDASQ6D6`](https://stellar.expert/explorer/testnet/contract/CDBHGAUHDNPATEWKI4QKVEDUFY4Z3KNM3U5Q24SN5O4WNWOCJDASQ6D6) |
+| `payout-engine` | [`CACW6OLOLGQZ6HK6F2CSAYJ4JFNEBSPDAYS7OVMYPXIBAYHGDLZTWSBB`](https://stellar.expert/explorer/testnet/contract/CACW6OLOLGQZ6HK6F2CSAYJ4JFNEBSPDAYS7OVMYPXIBAYHGDLZTWSBB) |
+| `premium-pool` | [`CD6AE6HF3C666LV6VCMILITL5FQ5AAZUU6ID2PZTOIE3GTNBOHYTVGZG`](https://stellar.expert/explorer/testnet/contract/CD6AE6HF3C666LV6VCMILITL5FQ5AAZUU6ID2PZTOIE3GTNBOHYTVGZG) |
+| `oracle-adapter` | [`CBAPAFWLOPF25VVUQOTIWUKM2EQF5B5PAFI2YZLMLK5QUVPMR3NK526S`](https://stellar.expert/explorer/testnet/contract/CBAPAFWLOPF25VVUQOTIWUKM2EQF5B5PAFI2YZLMLK5QUVPMR3NK526S) |
 | Premium token (AGRI, a Stellar Asset Contract) | [`CCVYQCIK6BTLOWMSQJU2A3MJ4K4MTQ2TTH2RIF5JXO2ML7ZEI36RNMA7`](https://stellar.expert/explorer/testnet/contract/CCVYQCIK6BTLOWMSQJU2A3MJ4K4MTQ2TTH2RIF5JXO2ML7ZEI36RNMA7) |
 
 Admin: `GCMDDZLAV5HZBCAONLAE5F2SQWNWLWUFWGDLXZXGYAGN7CPA42TOZN4D`
@@ -154,54 +168,70 @@ AGRI contract.
 
 ### Proof
 
-Sixteen transactions deployed and initialized the set — four deploys, two
-`initialize` calls, three `add_signer`s, two `set_payout_engine`s and the
-engine's `initialize`:
+Fifteen transactions deployed, initialized and wired the set:
 
 ```
-237f5622ffa109bf1a8e3a9a296155547f28cf3896b1b24ccb2f3ed2d13c49b0
-f3568ce5e408ce420d1556325f9812e96fc5c4b130de372fd98f327d6b88acf1
-6fc4796a414598c13c84c2de4103da9a18bdcf22567b482a7a75f1a5e14191c0
-bc1553986949820d7ae21a4cde1ba6349e739332d877a086215b69e8a1af5b40
-68046b65fc6275348eb2f69c5fef428cf6c48a4a09fe6c3dac2edd9562c2ce1f
-08e90e2f7357b29b4b54b8f5bfed809295baf3c16e21b377f00eaaee1bba2cfa
-5375748b3dbbf4f77c963f0b57ee50aa3995a3ed785fc18090242f5a929d0abc
-a6b663ddcfd7c0ff95ef9f7412df112658129b046c2fbf9bf4066741be3af72b
-5617c8715639223eaa3b6a66a32459cd17d560b61f83e7559eb96eaf6d9e2d90
-1e92ac3469534c2e87faa566e9293aaf2237a3793faf9f2dec95ed2c3d7e64fb
-d60ecb1242e788589b80138ee106baac6b0db243431095790e32b0b0e01c7b20
-83347851336d60de3cf4a28c8d418a578fd643ecc9a0d74c59074db80445592b
-6b05680dcc4711d3e6d5acb8fa09f4342d78df6549b21375dee410f96c533aec
-2c1592900aa8c061dc5f2e09a2d3f516f2356c5db455aa63b75a9d1784554dc4
-73fc9456badb8491aacfedae8c90123e6758ea2efde8b75ed7080bb2304f027a
-0db1110f25973380e3f2f5e3295734018d31fcbfd0014290001ff32fb5b14a0c
+9d49b560bcd9df4dc9b33823c11025074bbfa14c87a820c9ee2fb1c840b02064
+e80f27f8fe5b9041c0b4cfb24f6d45dd5be257a17c60f6b3906276833fe1dde6
+22dd0edb8745d5f6e09ef984ee805062eed380457653cc0108f39235309c040c
+e5afcd290b2b11bc014102211b07977eb457d2ed4a9adcc8119b924ce48ca68e
+6b57326a6c1c3862a0a50964a6f247b897eba5b3b994fcd36f063bb8421a42b9
+8558175a0779d61c50b0d4da299cd1d57b7ccea4897f7bdf2b917a16e04956de
+b2c171a5dc6c88892daaff7efd4c05d8bdfd51eea5c6c7e855290e5d2688a6fe
+fe44d15346a8818cb33a606bf45345f9242557341578adc0870faf1bbb85b136
+8fdfe2318f6ac603a18e245df79191412ece056b744c08e98a4ad6d53336c4ca
+d6cd5c85a93c06fd15ace3ad4ccb31145546499a3e8fc726fad1a19d31b1fd9c
+1ec85b4aa1ef75d58786e27e957fb3f0867bf91b3376752ca2c0d4a913a4e183
+f312107213989925da052a352fa33e89c4d0cb0f65db178fb40e06f6f4c0d516
+6fe678990a2ebab7440ecd52948fbbc0270bc8202b4d114b96da6266397b3051
+0b57888f2933679d05cb149f790364c1d3354e2c9481d6905506a35fc40bd215
+63d8df67350f9e48294658a5022c123cfea4e189b510dc3afd73413190910161
 ```
 
 (`https://stellar.expert/explorer/testnet/tx/<hash>` for each.)
 
+The wasm each contract runs is the byte-for-byte output of this tree. The
+deploy logged a wasm hash per contract, and rebuilding the four artifacts here
+reproduces every one of them:
+
+| Contract | Deployed wasm hash |
+| --- | --- |
+| `policy-registry` | `c53c1580517fb3d7ff34b8d5001b4071cadba43ceffb2e9e796efb9d788e17a1` |
+| `premium-pool` | `b2bc297267a608daa4caf0cd0e31c6ebf47468acf6d5d6228dac4a5080f112ab` |
+| `oracle-adapter` | `5ff5129866df12bcc2ff9184d5f420f9e23a633cbf75c3be5ad2a03e577d4d7b` |
+| `payout-engine` | `5180961751c2e8c034d6c266b9bb4fb54304eaa4b5007413cb5bb92edfd57578` |
+
+That is the check `pnpm check:wasm-reproducible` automates, which is why it is
+worth having: a contract whose deployed bytes cannot be rebuilt from the source it
+claims has no answer at all if it is ever questioned.
+
 Addresses are not evidence that anything *works*, so `scripts/smoke-testnet.sh`
 walks a whole policy life cycle on chain — trustline, mint, capitalise the pool,
-create, two independent signer approvals, settle. It has been run three times,
-and each run settled a real claim:
+create, two independent signer approvals, settle. Run against the set above:
 
-| Run | Policy minted | Settled |
-| --- | --- | --- |
-| 1 | [`69832559…`](https://stellar.expert/explorer/testnet/tx/69832559349a16a12041e2112f56be2df65b09fa97975f1eea66bdf7e6786e06) | [`29e7428b…`](https://stellar.expert/explorer/testnet/tx/29e7428bc5af1c9546a062984dcc284385a7c2bfd6711e9a88223343b75a486d) |
-| 2 | [`15858221…`](https://stellar.expert/explorer/testnet/tx/15858221daea28a357e8aa272b324aa2d6c9333a9e3e54ca883268bbbe83d29a) | [`04de0d41…`](https://stellar.expert/explorer/testnet/tx/04de0d418300d6b880eb476eb152a93a5a3a7798c20aa48a36424d66acb6af6c) |
-| 3 | [`58e844a9…`](https://stellar.expert/explorer/testnet/tx/58e844a979c559b214530ae1f78abc7393117e4dd261d645bbe370ed5684b08d) | [`c6285a75…`](https://stellar.expert/explorer/testnet/tx/c6285a75445df210b1b5cfd0c479c6a13ebb9511109e7de6bda5e40e5992d91a) |
+| Step | Transaction |
+| --- | --- |
+| First signer approves the reading | [`bf781cc0…`](https://stellar.expert/explorer/testnet/tx/bf781cc06b92e12223449e964f2f07448dd46ff750de17cf318022b32fc6f35e) |
+| Second signer finalizes it | [`8ab59d41…`](https://stellar.expert/explorer/testnet/tx/8ab59d41e0f291e8331c0728580ccc299c9e23f660e76747651db81073db1891) |
+| Settlement pays the farmer | [`3714eed8…`](https://stellar.expert/explorer/testnet/tx/3714eed8d5c08c3c621a0ad2d8ede435428c65c4412d1266ed0f048fdcaa0563) |
+
+The two approval transactions are the point of the oracle: the first opens a
+pending reading and changes no final state, the second reaches the threshold of
+2 and finalizes `ng_kaduna` at index **250**. One signer cannot settle anything.
 
 What the settlement transaction actually did, read off the events it emitted:
 
 - the pool released **4,000 AGRI** to the farmer and reported
-  `reserves_after: 192000`, `remaining_liability: 0`;
+  `reserves_after: 96000`, `remaining_liability: 0`;
 - the registry recorded the policy `Settled` (`status: 1`) with a `settled_at`;
 - the engine emitted `paid` with the deciding reading's index value and
   timestamp;
-- the farmer's balance went **1,000 → 5,000**, and `is_active` on the policy then
-  returned `false`.
+- the farmer's balance went **13,000 → 17,000**, and `is_active` on the policy
+  then returned `false`.
 
-Two distinct signers were required for each reading. One approval alone only
-opens a pending reading — the second is what finalizes it.
+The same script settled three further claims against the previous deployment of
+these contracts; those transactions remain on chain but belong to addresses this
+one supersedes, so the run above is the one that proves the current set.
 
 ### Reproducing any of it
 
@@ -213,9 +243,9 @@ git clone https://github.com/AgroShield/AgriShield-Networks && cd AgriShield-Net
 pnpm check:wasm-reproducible
 
 # Read the live deployment (swap in any address above)
-stellar contract invoke --id CBJANXSC7Z5DE7U5RE3UFIT2DVHSKXU6U5N2IJVK4SQ67XZYAYTWZTYU \
+stellar contract invoke --id CBAPAFWLOPF25VVUQOTIWUKM2EQF5B5PAFI2YZLMLK5QUVPMR3NK526S \
   --network testnet -- get_threshold
-stellar contract invoke --id CBSACYW6UT34KPR5QYRUQLS6LRA6OC6IFUEHTGSBV5LF7RCMF4MPTQMS \
+stellar contract invoke --id CD6AE6HF3C666LV6VCMILITL5FQ5AAZUU6ID2PZTOIE3GTNBOHYTVGZG \
   --network testnet -- stats
 ```
 
@@ -290,8 +320,14 @@ The frontend reaches the backend through a same-origin `/api` path, which the de
 server proxies and a reverse proxy serves in production — the backend sets no CORS
 headers, so a browser calling it cross-origin would have its responses refused.
 Pointing `VITE_API_BASE_URL` at an absolute origin works, but that origin then has
-to be allowed in front of the API. The public Vercel deployment deliberately sets
-neither, which is why it has no data.
+to be allowed in front of the API. The deployed console does neither: both
+projects sit on Vercel, and `vercel.json` rewrites `/api/*` to the API host, so
+the browser only ever sees one origin.
+
+`backend/api/[...path].ts` runs the same `buildApp` as `backend/src/index.ts`
+under Vercel's Node runtime, so the API answers from the chain per request with no
+server to keep alive. The long-running entrypoint is still there for a host that
+can run the keeper's interval job.
 
 ## Development
 
@@ -406,9 +442,49 @@ vercel link --project frontend
 vercel deploy --prod
 ```
 
-There is deliberately no SPA rewrite. The console has no client-side router, and
+The same file rewrites `/api/*` to the API host in the table at the top, which is
+what gives the console live data: the backend sets no CORS headers, so a
+cross-origin call from a browser would have its responses refused, and the
+rewrite keeps the console and its API on one origin instead.
+
+There is deliberately no SPA catch-all. The console has no client-side router, and
 a catch-all rewrite would answer `/api/*` with `index.html` — turning "the backend
 is not configured" into a JSON parse error instead of a clear 404.
+
+### Deploying the API
+
+The API deploys to Vercel from the repository root as well, with the project's
+root directory set to the root of the checkout so the workspace install resolves.
+It has its own `backend/vercel.json`, which builds `backend/api/[...path].ts`.
+
+That function serves the same `buildApp` as `backend/src/index.ts`, so a query
+answered from a function is answered identically by the process — there is one
+routing table, not two.
+
+| Variable | Required | Meaning |
+| --- | --- | --- |
+| `SOROBAN_RPC_URL` | yes | the Soroban RPC endpoint; `http` or `https` |
+| `SOROBAN_READ_SOURCE` | yes | a `G...` account used as the source of read-only simulations. It need not exist or hold anything |
+| `POLICY_REGISTRY_CONTRACT_ID` | yes | a `C...` strkey |
+| `PAYOUT_ENGINE_CONTRACT_ID` | yes | a `C...` strkey |
+| `PREMIUM_POOL_CONTRACT_ID` | yes | a `C...` strkey |
+| `ORACLE_ADAPTER_CONTRACT_ID` | yes | a `C...` strkey |
+| `SOROBAN_NETWORK` | no | `testnet`, `mainnet`, `futurenet` or `local` (default `testnet`) |
+| `KEEPER_SECRET_KEY` | no | **leave unset** — see below |
+| `KEEPER_ENABLED` / `KEEPER_INTERVAL_MS` / `KEEPER_BATCH_SIZE` | no | keeper tuning, with no meaning here |
+
+Nothing that could point at the wrong contract has a default: a deployment with a
+missing or malformed variable fails at boot naming the variable at fault rather
+than answering confidently from the wrong one. `SOROBAN_READ_SOURCE` is the entry
+worth knowing about, because a deployment that only reads still needs a source
+account — simulation ignores its sequence number, so it does not have to be
+funded.
+
+**Leave `KEEPER_SECRET_KEY` unset.** Not merely optional: its absence is what
+disables the keeper, and therefore what keeps a signing key out of the host's
+environment. A serverless function has no life between requests to run an interval
+job in, so setting it there logs a warning once and starts nothing — while an
+operator who set it expecting settlements would get silence instead.
 
 ## Getting involved
 
