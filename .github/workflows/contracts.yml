@@ -28,7 +28,7 @@ jobs:
     name: release profile builds for wasm32
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Add the wasm32 target
         run: rustup target add wasm32-unknown-unknown
@@ -40,7 +40,7 @@ jobs:
     name: contract tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # Host tests, so the wasm target is not involved; the toolchain and its
       # components come from rust-toolchain.toml.
@@ -51,7 +51,7 @@ jobs:
     name: rustfmt and clippy
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # Same two commands as `pnpm fmt:contracts` and `pnpm lint:contracts`;
       # clippy denies warnings so a new one fails rather than accumulating.
