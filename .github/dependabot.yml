@@ -14,6 +14,19 @@ updates:
         patterns:
           - "soroban-*"
           - "stellar-xdr"
+    # A major SDK bump is an upgrade, not a dependency update: the runtime that
+    # accepts the module is on the network, so moving it means rebuilding,
+    # re-testing and redeploying on purpose, and the deployed contracts keep
+    # running the old SDK until that happens. Left to a bot, this opens a PR
+    # that looks mergeable while nothing about the deployment has changed.
+    # Minor and patch bumps still come through, in one grouped PR.
+    ignore:
+      - dependency-name: "soroban-sdk"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "soroban-env-*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "stellar-xdr"
+        update-types: ["version-update:semver-major"]
     commit-message:
       prefix: build
     labels:
