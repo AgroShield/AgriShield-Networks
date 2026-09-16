@@ -9,6 +9,15 @@ still pre-1.0 — the `0.x` line reserves the right to change behaviour.
 
 ### Fixed
 
+- **Every nested API path returned a platform 404 in production.** Vercel's
+  `api/[...path].ts` convention generates a route matching a single path segment,
+  so `/api/health` and `/api/policies` worked while `/api/policies/{id}`,
+  `/api/policies/{id}/settlement`, `POST /api/settlements/{id}` and
+  `/api/settlements/keeper` never reached the function at all - the console's
+  detail and settlement panels were dead in production. Fixed with an explicit
+  splat rewrite to the catch-all file in `backend/vercel.json`. Only reachable
+  against a real deployment; the test suite exercises the app in-process, where
+  routing is not Vercel's.
 - **The contracts could not be deployed anywhere.** They were built for
   `wasm32-unknown-unknown`, which the Soroban runtime rejects because Rust 1.82
   enabled the `reference-types` and `multivalue` wasm proposals by default for
