@@ -46,3 +46,17 @@ jobs:
       # components come from rust-toolchain.toml.
       - name: Run the contract test suite
         run: cargo test --workspace
+
+  lint:
+    name: rustfmt and clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Same two commands as `pnpm fmt:contracts` and `pnpm lint:contracts`;
+      # clippy denies warnings so a new one fails rather than accumulating.
+      - name: Formatting
+        run: cargo fmt --all -- --check
+
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
