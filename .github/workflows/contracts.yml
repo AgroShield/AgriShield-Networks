@@ -30,8 +30,9 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Add the wasm32 target
-        run: rustup target add wasm32-unknown-unknown
+      # `wasm32v1-none` is the only wasm target the Soroban runtime accepts.
+      - name: Add the wasm target
+        run: rustup target add wasm32v1-none
 
       - name: Build the release profile for wasm32
         run: ./scripts/check-release-profile.sh

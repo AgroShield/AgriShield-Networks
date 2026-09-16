@@ -1,5 +1,14 @@
 [toolchain]
 channel = "stable"
 components = ["rustfmt", "clippy"]
-targets = ["wasm32-unknown-unknown"]
+# `wasm32v1-none`, not `wasm32-unknown-unknown`. Rust 1.82 turned the
+# `reference-types` and `multivalue` wasm proposals on by default for
+# `wasm32-unknown-unknown`, and the Soroban runtime does not enable them, so it
+# rejects a module built for that target: `Error(WasmVm, InvalidAction)`,
+# `reference-types not enabled: zero byte expected`. `wasm32v1-none` is the
+# wasm v1 target without those proposals and is the only target the Stellar
+# runtime accepts. Nothing local catches the difference - the module compiles,
+# the tests pass and the release profile check is happy; the rejection only
+# happens when a network tries to run the module.
+targets = ["wasm32v1-none"]
 profile = "minimal"

@@ -20,7 +20,8 @@ set -euo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
-TARGET="wasm32-unknown-unknown"
+# The only wasm target the Soroban runtime accepts; see rust-toolchain.toml.
+TARGET="wasm32v1-none"
 LOG="$(mktemp)"
 trap 'rm -f "$LOG"' EXIT
 

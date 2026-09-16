@@ -43,7 +43,9 @@ set -euo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
-TARGET="wasm32-unknown-unknown"
+# `wasm32v1-none` is the only wasm target the Soroban runtime accepts; see
+# rust-toolchain.toml for what happens with `wasm32-unknown-unknown`.
+TARGET="wasm32v1-none"
 RELEASE_DIR="target/$TARGET/release"
 NETWORK="${STELLAR_NETWORK:-testnet}"
 RATIO="${MIN_SOLVENCY_RATIO_BPS:-12000}"
