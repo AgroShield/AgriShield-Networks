@@ -30,10 +30,12 @@ for the addresses, the transactions that prove they work, and the console.
 
 Two minutes on the problem, the mechanism and the evidence. It is recorded
 against the **live console reading Stellar testnet** and the contracts deployed
-below, not against slides or a mock: the policy it settles a claim on is real
-chain state, and the test output on screen is this tree's. Every frame can be
-traced back to a command in [docs/video](docs/video), which is how it is
-regenerated rather than re-recorded.
+below, not drawn as slides or mocked up. The policy it inspects is real chain
+state; the "Paid" verdict on it is the engine's own on-chain decision, read back
+through the API; the settlement transaction it cites is on testnet; and the test
+summary on screen came from this tree. Every frame traces back to a command in
+[docs/video](docs/video), which is how it is regenerated rather than
+re-recorded.
 
 ## Features
 
