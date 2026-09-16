@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { App } from '../src/App';
@@ -162,6 +162,15 @@ describe('one policy', () => {
   it('submits a settlement and reports what the chain did', async () => {
     const client = renderApp((c) => {
       c.settleResult = sampleSettlement();
+      // The mount's answer, then the one the settlement is supposed to cause:
+      // the keeper has counted it, so the panel has something new to show.
+      c.keeperResults.push(
+        sampleKeeper(),
+        sampleKeeper({
+          cursor: '8',
+          totals: { swept: 6, settled: 2, expired: 2, failed: 0 },
+        }),
+      );
     });
 
     searchByFarmer();
@@ -171,8 +180,20 @@ describe('one policy', () => {
     expect(await screen.findByText('Settlement Paid')).toBeDefined();
     expect(client.settledIds).toEqual(['7']);
     expect(screen.getByText(/Paid 0.0004\. Transaction hash-7, in ledger 51\./)).toBeDefined();
-    // The keeper's totals have changed too, so the panel is not left stale.
-    expect(callsTo(client, 'keeperStatus')).toBe(2);
+    // The keeper's totals have changed too, so the panel re-reads rather than
+    // being left stale. Asserted on what the panel then shows, not on the number
+    // of calls: a count proves a request went out, not that its answer landed.
+    //
+    // Both are awaited. The re-read is a passive effect, and rarely the DOM shows
+    // the settlement before that effect has run — so the count is momentarily 1.
+    // That is a race in the test rather than a defect in the panel (this same
+    // test passed and failed on identical code), and awaiting removes it.
+    expect(await screen.findByText('next sweep starts at #8')).toBeDefined();
+    await waitFor(() => expect(callsTo(client, 'keeperStatus')).toBe(2));
+
+    const examined = screen.getByText('Policies examined').parentElement;
+    if (examined === null) throw new Error('the field wrapper is missing');
+    expect(within(examined).getByText('6')).toBeDefined();
   });
 
   it('shows the reason a settlement was refused', async () => {

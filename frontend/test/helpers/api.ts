@@ -131,6 +131,17 @@ export class ScriptedClient implements ApiClient {
   previewResult: Evaluation | Error = samplePreview();
   settleResult: SubmittedSettlement | Error = sampleSettlement();
   keeperResult: KeeperStatus | Error = sampleKeeper();
+  /**
+   * What `keeperStatus` answers, call by call, before falling back to
+   * `keeperResult`.
+   *
+   * The panel is supposed to re-read after a settlement, and a fixed answer
+   * cannot show that it did — the test would pass whether the re-read happened
+   * or not. The first entry is the mount's answer, the second the one after.
+   */
+  readonly keeperResults: KeeperStatus[] = [];
+  /** How many times `keeperStatus` has been asked, indexing `keeperResults`. */
+  keeperCalls = 0;
 
   async health(): Promise<Health> {
     this.calls.push('health');
@@ -163,7 +174,9 @@ export class ScriptedClient implements ApiClient {
 
   async keeperStatus(): Promise<KeeperStatus> {
     this.calls.push('keeperStatus');
-    return answer(this.keeperResult);
+    const queued = this.keeperResults[this.keeperCalls];
+    this.keeperCalls += 1;
+    return answer(queued ?? this.keeperResult);
   }
 }
 
