@@ -15,7 +15,7 @@ authors = ["AgriShield Contributors"]
 repository = "https://github.com/AgroShield/AgriShield-Networks"
 
 [workspace.dependencies]
-soroban-sdk = "22.0.0"
+soroban-sdk = "27.0.6"
 
 # Soroban contracts are deployed as small wasm blobs, so optimise for size and
 # deterministic behaviour rather than raw throughput.
