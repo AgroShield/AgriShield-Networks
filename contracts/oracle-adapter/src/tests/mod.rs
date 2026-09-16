@@ -4,10 +4,12 @@
 //! * [`submission`] — partial signatures, conflicts, staleness, sanity bands
 //! * [`finalization`] — reaching the threshold, immutability, per-region isolation
 //! * [`history`] — bounded ring of finalized readings
+//! * [`fees`] — cost guards on the submission path
 //! * [`threshold`] — the pure N-of-M helpers
 //! * [`auth`] — signature requirements on admin and signer entry points
 
 mod auth;
+mod fees;
 mod finalization;
 mod history;
 mod signers;

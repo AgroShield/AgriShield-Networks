@@ -215,7 +215,12 @@ impl PremiumPool {
             return Err(Error::InsufficientReserves);
         }
 
+        // The pool holds no internal ledger and this call frame is the only thing
+        // running, so the balance after the transfer is exactly `available`
+        // minus what just left. The event used to ask the token contract again,
+        // which cost a second cross-contract call on every single claim.
         transfer_out(&env, &to, amount)?;
+        let reserves_after = available - amount;
 
         let previous_liability = storage::get_outstanding_liability(&env);
         let remaining = solvency::reduce_liability(previous_liability, amount);
@@ -227,7 +232,7 @@ impl PremiumPool {
             &PayoutReleased {
                 to,
                 amount,
-                reserves_after: reserves(&env)?,
+                reserves_after,
                 remaining_liability: remaining,
             },
         );
@@ -262,7 +267,10 @@ impl PremiumPool {
         transfer_out(&env, &to, amount)?;
         storage::add_withdrawn(&env, amount);
 
-        let reserves_after = reserves(&env)?;
+        // Same identity as the payout path: nothing else can move this contract's
+        // balance inside this call, so a second `balance()` cross-contract call
+        // would buy a number we already know.
+        let reserves_after = available - amount;
         events::reserve_withdrawn(
             &env,
             &ReserveWithdrawn {

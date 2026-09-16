@@ -182,12 +182,25 @@ impl OracleAdapter {
         if timestamp > now + MAX_FUTURE_SKEW_SECONDS {
             return Err(Error::FutureTimestamp);
         }
-        if storage::is_finalized(&env, &region_id, timestamp) {
-            return Err(Error::ReadingAlreadyFinalized);
-        }
+        // One read of `Latest` answers both "already finalized" and "too old".
+        // This used to read `Latest` twice and walk the entire retained history
+        // as well, for an answer the frontier alone already gives — on a path
+        // that runs once per signer, per reading.
         if let Ok(latest) = storage::get_latest(&env, &region_id) {
-            if timestamp <= latest.timestamp {
-                return Err(Error::StaleReading);
+            if timestamp == latest.timestamp {
+                return Err(Error::ReadingAlreadyFinalized);
+            }
+            if timestamp < latest.timestamp {
+                // Older than the frontier, so it was finalized at some point:
+                // either still retained or aged out of the ring. The two are
+                // kept distinct because they tell a signer what actually
+                // happened, and the retained case is one existence check on one
+                // entry rather than a scan of the ring.
+                return Err(if storage::has_history(&env, &region_id, timestamp) {
+                    Error::ReadingAlreadyFinalized
+                } else {
+                    Error::StaleReading
+                });
             }
         }
 

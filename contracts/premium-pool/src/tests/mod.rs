@@ -5,6 +5,7 @@
 //! * [`withdrawals`] — the solvency floor on admin withdrawals
 //! * [`payouts`] — engine-driven claims and liability bookkeeping
 //! * [`authorization`] — who may move capital, and the engine allowlist
+//! * [`fees`] — cost guards on the capital-moving paths
 //!
 //! The pool's payouts are only callable by the payout engine *contract*, so
 //! these tests deploy [`MockEngine`] and drive the pool through it rather than
@@ -13,6 +14,7 @@
 
 mod authorization;
 mod deposits;
+mod fees;
 mod payouts;
 mod solvency;
 mod withdrawals;
