@@ -1,0 +1,40 @@
+name: packages
+
+# The backend and the frontend are the two packages that talk to the contracts,
+# and neither is covered by the contracts workflow.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  packages:
+    name: backend and frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Before setup-node, so the pnpm cache it configures has a pnpm to key on.
+      # The version comes from `packageManager` in the root package.json.
+      - uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      # A lockfile that disagrees with the manifests should fail here rather
+      # than be silently resolved into something nobody reviewed.
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      # Both scripts are `pnpm -r --if-present`, so they cover every workspace
+      # package that defines them.
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
