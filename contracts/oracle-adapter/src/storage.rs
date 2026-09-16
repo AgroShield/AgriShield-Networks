@@ -166,6 +166,40 @@ pub fn get_history(env: &Env, region_id: &Symbol) -> Vec<IndexReading> {
     history
 }
 
+/// The readings finalized inside `[start, end)`, oldest first.
+///
+/// The index is ascending, so entries before the window are skipped and the loop
+/// stops at the first one past it. Neither is read: a caller asking for a
+/// coverage window wants the handful of readings that window can contain, not
+/// the season the region has accumulated. This is what the settlement path uses,
+/// and it is why settling no longer moves a full history across a contract
+/// boundary.
+pub fn get_readings_in_range(
+    env: &Env,
+    region_id: &Symbol,
+    start: u64,
+    end: u64,
+) -> Vec<IndexReading> {
+    let mut readings = Vec::new(env);
+    for timestamp in get_history_index(env, region_id).iter() {
+        if timestamp < start {
+            continue;
+        }
+        if timestamp >= end {
+            break;
+        }
+        let key = DataKey::HistoryAt(region_id.clone(), timestamp);
+        if let Some(reading) = env
+            .storage()
+            .persistent()
+            .get::<DataKey, IndexReading>(&key)
+        {
+            readings.push_back(reading);
+        }
+    }
+    readings
+}
+
 /// Whether a finalized reading is retained for exactly `(region, timestamp)`.
 ///
 /// One existence check on one entry — no value is read, so no bytes are charged.

@@ -39,8 +39,18 @@ pub trait PremiumPoolInterface {
     fn payout_engine(env: Env) -> Result<Address, crate::error::Error>;
 }
 
-/// The part of `oracle-adapter` the engine uses: the region's finalized history.
+/// The part of `oracle-adapter` the engine uses: the region's finalized readings.
+///
+/// Only the windowed query is declared, not the full history. The engine can
+/// never have a use for a reading outside a policy's coverage window, and
+/// declaring the narrower call is what keeps a settlement from pulling a whole
+/// season's readings across the boundary to throw most of them away.
 #[contractclient(name = "OracleAdapterClient")]
 pub trait OracleAdapterInterface {
-    fn get_index_history(env: Env, region_id: Symbol) -> Vec<IndexReading>;
+    fn get_index_history_between(
+        env: Env,
+        region_id: Symbol,
+        start: u64,
+        end: u64,
+    ) -> Vec<IndexReading>;
 }

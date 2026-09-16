@@ -294,6 +294,26 @@ impl OracleAdapter {
         storage::get_history(&env, &region_id)
     }
 
+    /// The readings finalized inside `[start, end)`, oldest first.
+    ///
+    /// This is the query the settlement path wants, because a policy can only
+    /// ever be decided by a reading inside its own coverage window. Asking for
+    /// the whole region history instead and discarding the rest moved a season's
+    /// worth of readings across a contract boundary on every settlement attempt —
+    /// and settlement is retried per policy, per keeper round.
+    ///
+    /// The window is half-open to match the registry's overlap rule and
+    /// [`crate::MAX_HISTORY_PER_REGION`]'s sibling in the engine's `find_trigger`,
+    /// so a reading at exactly `end` belongs to the next window and not this one.
+    pub fn get_index_history_between(
+        env: Env,
+        region_id: Symbol,
+        start: u64,
+        end: u64,
+    ) -> Vec<IndexReading> {
+        storage::get_readings_in_range(&env, &region_id, start, end)
+    }
+
     /// Whether a reading exists for the exact `(region, timestamp)` pair.
     pub fn is_finalized(env: Env, region_id: Symbol, timestamp: u64) -> bool {
         storage::is_finalized(&env, &region_id, timestamp)

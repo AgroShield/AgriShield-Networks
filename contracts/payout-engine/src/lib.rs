@@ -132,7 +132,12 @@ impl PayoutEngine {
     /// that the *calling contract* is their registered payout engine.
     pub fn settle_policy(env: Env, policy_id: u64) -> Result<SettlementOutcome, Error> {
         let policy = load_active_policy(&env, policy_id)?;
-        let history = load_history(&env, &policy.region_id)?;
+        let history = load_history(
+            &env,
+            &policy.region_id,
+            policy.coverage_start,
+            policy.coverage_end,
+        )?;
         let decision = trigger::evaluate_terms(
             &history,
             policy.coverage_start,
@@ -256,7 +261,12 @@ impl PayoutEngine {
     /// pure decision procedure settlement uses.
     pub fn evaluate(env: Env, policy_id: u64) -> Result<TriggerEvaluation, Error> {
         let policy = load_active_policy(&env, policy_id)?;
-        let history = load_history(&env, &policy.region_id)?;
+        let history = load_history(
+            &env,
+            &policy.region_id,
+            policy.coverage_start,
+            policy.coverage_end,
+        )?;
         let decision = trigger::evaluate_terms(
             &history,
             policy.coverage_start,
@@ -325,10 +335,26 @@ fn load_active_policy(env: &Env, policy_id: u64) -> Result<Policy, Error> {
     Ok(policy)
 }
 
-/// The region's bounded, oldest-first reading history.
-fn load_history(env: &Env, region_id: &Symbol) -> Result<Vec<IndexReading>, Error> {
+/// The region's finalized readings inside `[start, end)`, oldest first.
+///
+/// The window is passed to the oracle rather than filtered here, because every
+/// entry outside it is unusable: [`trigger::find_trigger`] only ever counts a
+/// reading inside the policy's coverage window. Fetching the whole region
+/// history and discarding the rest would move a season's worth of readings
+/// across a contract boundary on every settlement — and settlement is retried
+/// per policy, per keeper round, on a region whose history is retained at up to
+/// `MAX_HISTORY_PER_REGION` readings.
+///
+/// The bounds match `find_trigger`'s: half-open, so a reading at exactly `end`
+/// belongs to the window that opens there rather than to this one.
+fn load_history(
+    env: &Env,
+    region_id: &Symbol,
+    start: u64,
+    end: u64,
+) -> Result<Vec<IndexReading>, Error> {
     let oracle = clients::OracleAdapterClient::new(env, &storage::get_oracle(env)?);
-    match oracle.try_get_index_history(region_id) {
+    match oracle.try_get_index_history_between(region_id, &start, &end) {
         Ok(Ok(history)) => Ok(history),
         _ => Err(Error::OracleCallFailed),
     }

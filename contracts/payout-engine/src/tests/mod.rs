@@ -11,10 +11,13 @@
 //! * [`trigger`] — the pure decision table
 //! * [`properties`] — the same rule, checked against a generated reference
 //! * [`settlement`] — payouts, expiry and liability through the whole system
+//! * [`fees`] — what a settlement costs, and that it does not grow with
+//!   history the policy's window excludes
 //! * [`authorization`] — who may configure the engine, and what it refuses to
 //!   be configured against
 
 mod authorization;
+mod fees;
 mod properties;
 mod settlement;
 mod trigger;
