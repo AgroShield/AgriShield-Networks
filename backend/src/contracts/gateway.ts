@@ -80,6 +80,29 @@ export function parseContractErrorCode(message: string): number | undefined {
   return Number.isSafeInteger(code) ? code : undefined;
 }
 
+/**
+ * Async mutex to serialize transaction sequence acquisition and submission.
+ * Prevents sequence collisions (`bad_seq`) when concurrent settlement calls occur.
+ */
+export class AsyncMutex {
+  private queue: Promise<void> = Promise.resolve();
+
+  async runExclusive<T>(fn: () => Promise<T>): Promise<T> {
+    let release!: () => void;
+    const wait = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const prev = this.queue;
+    this.queue = prev.then(() => wait, () => wait);
+    await prev;
+    try {
+      return await fn();
+    } finally {
+      release();
+    }
+  }
+}
+
 /** A contract call the network refused. */
 export class ContractCallError extends Error {
   readonly contractId: string;
@@ -150,6 +173,7 @@ export class RpcSorobanGateway implements SorobanGateway {
   private readonly submissionTimeoutMs: number;
   private readonly pollIntervalMs: number;
   private readonly sleep: (ms: number) => Promise<void>;
+  private readonly submissionMutex: AsyncMutex = new AsyncMutex();
 
   constructor(options: RpcGatewayOptions) {
     // Case-insensitively: `HTTP://host` is an http endpoint, and testing the raw
@@ -198,57 +222,59 @@ export class RpcSorobanGateway implements SorobanGateway {
       throw new Error('no keeper key is configured, so transactions cannot be submitted');
     }
 
-    const account = await this.server.getAccount(keeper.publicKey());
-    const transaction = new TransactionBuilder(account, {
-      fee: BASE_FEE,
-      networkPassphrase: this.networkPassphrase,
-    })
-      .addOperation(this.buildOperation(call))
-      .setTimeout(30)
-      .build();
+    return this.submissionMutex.runExclusive(async () => {
+      const account = await this.server.getAccount(keeper.publicKey());
+      const transaction = new TransactionBuilder(account, {
+        fee: BASE_FEE,
+        networkPassphrase: this.networkPassphrase,
+      })
+        .addOperation(this.buildOperation(call))
+        .setTimeout(30)
+        .build();
 
-    // `prepareTransaction` simulates the call and folds the footprint, the
-    // resource fee and the authorisation into the envelope. Doing that by hand
-    // is how submissions end up failing with opaque resource errors — and it
-    // also means a contract rejection surfaces here, before anything is signed.
-    let prepared: Transaction;
-    try {
-      prepared = await this.server.prepareTransaction(transaction);
-    } catch (cause) {
-      const message = cause instanceof Error ? cause.message : String(cause);
-      throw new ContractCallError(
-        call.contractId,
-        call.method,
-        message,
-        parseContractErrorCode(message),
-      );
-    }
+      // `prepareTransaction` simulates the call and folds the footprint, the
+      // resource fee and the authorisation into the envelope. Doing that by hand
+      // is how submissions end up failing with opaque resource errors — and it
+      // also means a contract rejection surfaces here, before anything is signed.
+      let prepared: Transaction;
+      try {
+        prepared = await this.server.prepareTransaction(transaction);
+      } catch (cause) {
+        const message = cause instanceof Error ? cause.message : String(cause);
+        throw new ContractCallError(
+          call.contractId,
+          call.method,
+          message,
+          parseContractErrorCode(message),
+        );
+      }
 
-    prepared.sign(keeper);
-    const sent = await this.server.sendTransaction(prepared);
+      prepared.sign(keeper);
+      const sent = await this.server.sendTransaction(prepared);
 
-    if (sent.status === 'ERROR') {
-      throw new ContractCallError(
-        call.contractId,
-        call.method,
-        `the network rejected transaction ${sent.hash}`,
-      );
-    }
-    if (sent.status === 'TRY_AGAIN_LATER') {
-      // The node declined to queue it, which it does when it is saturated. There
-      // is nothing to poll for: waiting out the submission budget would end in
-      // "not included within 30000ms" for a transaction that was never accepted,
-      // describing a timeout where the real answer is "the node is busy".
-      throw new ContractCallError(
-        call.contractId,
-        call.method,
-        'the node is too busy to accept the transaction; it was not submitted',
-      );
-    }
+      if (sent.status === 'ERROR') {
+        throw new ContractCallError(
+          call.contractId,
+          call.method,
+          `the network rejected transaction ${sent.hash}`,
+        );
+      }
+      if (sent.status === 'TRY_AGAIN_LATER') {
+        // The node declined to queue it, which it does when it is saturated. There
+        // is nothing to poll for: waiting out the submission budget would end in
+        // "not included within 30000ms" for a transaction that was never accepted,
+        // describing a timeout where the real answer is "the node is busy".
+        throw new ContractCallError(
+          call.contractId,
+          call.method,
+          'the node is too busy to accept the transaction; it was not submitted',
+        );
+      }
 
-    // `PENDING`, and `DUPLICATE` for a transaction already in flight: both mean
-    // the node has it, so the answer is to wait for inclusion.
-    return this.awaitInclusion(call, sent.hash);
+      // `PENDING`, and `DUPLICATE` for a transaction already in flight: both mean
+      // the node has it, so the answer is to wait for inclusion.
+      return this.awaitInclusion(call, sent.hash);
+    });
   }
 
   async latestLedger(): Promise<number> {
