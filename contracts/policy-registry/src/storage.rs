@@ -186,13 +186,33 @@ fn append_index(
 }
 
 pub fn add_plot_policy(env: &Env, plot_hash: &BytesN<32>, id: u64, cap: u32) -> Result<(), Error> {
-    append_index(
-        env,
-        DataKey::PlotPolicies(plot_hash.clone()),
-        id,
-        Some(cap),
-        Error::PlotPolicyLimitReached,
-    )
+    let key = DataKey::PlotPolicies(plot_hash.clone());
+    let ids: Vec<u64> = env
+        .storage()
+        .persistent()
+        .get::<DataKey, Vec<u64>>(&key)
+        .unwrap_or_else(|| Vec::new(env));
+
+    // Retain only active policies in the active plot index so historical settled or
+    // expired policies do not permanently exhaust the plot's capacity.
+    let mut active_ids = Vec::new(env);
+    for existing_id in ids.iter() {
+        if let Ok(policy) = get_policy(env, existing_id) {
+            if policy.is_active() {
+                active_ids.push_back(existing_id);
+            }
+        }
+    }
+
+    if active_ids.len() >= cap {
+        return Err(Error::PlotPolicyLimitReached);
+    }
+    active_ids.push_back(id);
+    env.storage().persistent().set(&key, &active_ids);
+    env.storage()
+        .persistent()
+        .extend_ttl(&key, PERSISTENT_TTL_THRESHOLD, PERSISTENT_TTL_EXTEND_TO);
+    Ok(())
 }
 
 pub fn add_farmer_policy(env: &Env, farmer: &Address, id: u64) -> Result<(), Error> {
