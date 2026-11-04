@@ -76,6 +76,26 @@ impl OracleAdapter {
         Ok(())
     }
 
+    /// Step 1 of 2-step admin transfer: current admin nominates a candidate.
+    pub fn nominate_admin(env: Env, admin: Address, new_admin: Address) -> Result<(), Error> {
+        admin.require_auth();
+        storage::require_admin(&env, &admin)?;
+        storage::set_pending_admin(&env, &new_admin);
+        Ok(())
+    }
+
+    /// Step 2 of 2-step admin transfer: candidate accepts nomination.
+    pub fn accept_admin(env: Env, new_admin: Address) -> Result<(), Error> {
+        new_admin.require_auth();
+        let pending = storage::get_pending_admin(&env).ok_or(Error::Unauthorized)?;
+        if pending != new_admin {
+            return Err(Error::Unauthorized);
+        }
+        storage::set_admin(&env, &new_admin);
+        storage::clear_pending_admin(&env);
+        Ok(())
+    }
+
     /// Registers an authorised oracle signer. Admin-only.
     pub fn add_signer(env: Env, admin: Address, signer: Address) -> Result<(), Error> {
         admin.require_auth();
@@ -364,6 +384,10 @@ impl OracleAdapter {
 
     pub fn admin(env: Env) -> Result<Address, Error> {
         storage::get_admin(&env)
+    }
+
+    pub fn pending_admin(env: Env) -> Option<Address> {
+        storage::get_pending_admin(&env)
     }
 }
 
