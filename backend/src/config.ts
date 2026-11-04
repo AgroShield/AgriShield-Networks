@@ -48,6 +48,7 @@ export interface ServerSettings {
   readonly logLevel: string;
   readonly rateLimitMax?: number;
   readonly rateLimitWindowMs?: number;
+  readonly corsOrigin?: string;
 }
 
 export interface AppConfig {
@@ -233,6 +234,7 @@ export function loadConfig(env: Env = process.env): AppConfig {
       logLevel: optional(env, 'LOG_LEVEL') ?? 'info',
       rateLimitMax: env.RATE_LIMIT_MAX ? Number.parseInt(env.RATE_LIMIT_MAX, 10) : 100,
       rateLimitWindowMs: env.RATE_LIMIT_WINDOW_MS ? Number.parseInt(env.RATE_LIMIT_WINDOW_MS, 10) : 60_000,
+      corsOrigin: optional(env, 'CORS_ORIGIN') ?? '*',
     },
   };
 }

@@ -40,6 +40,17 @@ export interface RouteDeps {
 export function createApp(config: AppConfig): FastifyInstance {
   const app = Fastify({ logger: { level: config.server.logLevel } });
 
+  // CORS support
+  const allowedOrigin = config.server.corsOrigin ?? '*';
+  app.addHook('onRequest', async (request, reply) => {
+    reply.header('Access-Control-Allow-Origin', allowedOrigin);
+    reply.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    reply.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Api-Key');
+    if (request.method === 'OPTIONS') {
+      return reply.code(204).send();
+    }
+  });
+
   // Security headers
   app.addHook('onSend', async (_request, reply, payload) => {
     reply.header('X-Content-Type-Options', 'nosniff');
