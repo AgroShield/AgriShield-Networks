@@ -24,6 +24,7 @@ pub const PERSISTENT_TTL_EXTEND_TO: u32 = 6_220_800; // ~360 days
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum DataKey {
     Admin,
+    PendingAdmin,
     PremiumToken,
     PayoutEngine,
     PremiumPool,
@@ -48,6 +49,18 @@ pub fn set_admin(env: &Env, admin: &Address) {
 
 pub fn get_admin(env: &Env) -> Option<Address> {
     env.storage().instance().get(&DataKey::Admin)
+}
+
+pub fn set_pending_admin(env: &Env, pending: &Address) {
+    env.storage().instance().set(&DataKey::PendingAdmin, pending);
+}
+
+pub fn get_pending_admin(env: &Env) -> Option<Address> {
+    env.storage().instance().get(&DataKey::PendingAdmin)
+}
+
+pub fn clear_pending_admin(env: &Env) {
+    env.storage().instance().remove(&DataKey::PendingAdmin);
 }
 
 /// Fails with [`Error::NotInitialized`] / [`Error::Unauthorized`] unless
