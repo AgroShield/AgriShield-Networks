@@ -175,3 +175,52 @@ fn find_trigger_reports_no_match_for_a_history_with_out_of_window_breaches() {
 
     assert!(find_trigger(&entries, OPEN, CLOSE, THRESHOLD).is_none());
 }
+
+#[test]
+fn flood_reading_at_or_above_threshold_triggers() {
+    let env = Env::default();
+    let entries = history(&env, &[(100, OPEN + DAY), (450, OPEN + 5 * DAY)]);
+    let decision = crate::trigger::evaluate_terms_with_condition(
+        &entries,
+        OPEN,
+        CLOSE,
+        400,
+        CLOSE - DAY,
+        crate::TriggerCondition::AboveOrEqual,
+    );
+
+    assert_eq!(decision.status(), SettlementStatus::Paid);
+    assert_eq!(decision.reading().unwrap().index_value, 450);
+}
+
+#[test]
+fn flood_reading_below_threshold_does_not_trigger() {
+    let env = Env::default();
+    let entries = history(&env, &[(350, OPEN + 5 * DAY)]);
+    let decision = crate::trigger::evaluate_terms_with_condition(
+        &entries,
+        OPEN,
+        CLOSE,
+        400,
+        CLOSE - DAY,
+        crate::TriggerCondition::AboveOrEqual,
+    );
+
+    assert_eq!(decision.status(), SettlementStatus::Pending);
+}
+
+#[test]
+fn flood_reading_expires_if_no_excess_rainfall_when_window_closes() {
+    let env = Env::default();
+    let entries = history(&env, &[(200, OPEN + 5 * DAY), (380, OPEN + 15 * DAY)]);
+    let decision = crate::trigger::evaluate_terms_with_condition(
+        &entries,
+        OPEN,
+        CLOSE,
+        400,
+        CLOSE + 1,
+        crate::TriggerCondition::AboveOrEqual,
+    );
+
+    assert_eq!(decision.status(), SettlementStatus::Expired);
+}
