@@ -46,6 +46,8 @@ export interface ServerSettings {
   readonly host: string;
   readonly port: number;
   readonly logLevel: string;
+  readonly rateLimitMax?: number;
+  readonly rateLimitWindowMs?: number;
 }
 
 export interface AppConfig {
@@ -229,6 +231,8 @@ export function loadConfig(env: Env = process.env): AppConfig {
       host: optional(env, 'HOST') ?? '0.0.0.0',
       port: integerWithin(env, 'PORT', { fallback: 3000, min: 1, max: 65_535 }),
       logLevel: optional(env, 'LOG_LEVEL') ?? 'info',
+      rateLimitMax: env.RATE_LIMIT_MAX ? Number.parseInt(env.RATE_LIMIT_MAX, 10) : 100,
+      rateLimitWindowMs: env.RATE_LIMIT_WINDOW_MS ? Number.parseInt(env.RATE_LIMIT_WINDOW_MS, 10) : 60_000,
     },
   };
 }

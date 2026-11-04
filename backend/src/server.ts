@@ -39,6 +39,49 @@ export interface RouteDeps {
 export function createApp(config: AppConfig): FastifyInstance {
   const app = Fastify({ logger: { level: config.server.logLevel } });
 
+  // Security headers
+  app.addHook('onSend', async (_request, reply, payload) => {
+    reply.header('X-Content-Type-Options', 'nosniff');
+    reply.header('X-Frame-Options', 'DENY');
+    reply.header('X-XSS-Protection', '1; mode=block');
+    reply.header('Referrer-Policy', 'strict-origin-when-cross-origin');
+    reply.header('Content-Security-Policy', "default-src 'self'");
+    return payload;
+  });
+
+  // Sliding window rate limiter
+  const rateLimitMax = config.server.rateLimitMax ?? 100;
+  const rateLimitWindowMs = config.server.rateLimitWindowMs ?? 60_000;
+  const requestLogs = new Map<string, number[]>();
+
+  app.addHook('onRequest', async (request, reply) => {
+    if (request.url.startsWith('/health') || request.url === '/live' || request.url === '/ready') {
+      return;
+    }
+
+    const ip = request.ip || '127.0.0.1';
+    const now = Date.now();
+    const timestamps = (requestLogs.get(ip) ?? []).filter((ts) => now - ts < rateLimitWindowMs);
+
+    const remaining = Math.max(0, rateLimitMax - timestamps.length);
+    const reset = Math.ceil((now + rateLimitWindowMs) / 1000);
+
+    reply.header('x-ratelimit-limit', rateLimitMax);
+    reply.header('x-ratelimit-remaining', remaining);
+    reply.header('x-ratelimit-reset', reset);
+
+    if (timestamps.length >= rateLimitMax) {
+      return reply.code(429).send(
+        errorBody('rate_limit_exceeded', 'too many requests, please slow down', {
+          retryAfterMs: rateLimitWindowMs - (now - timestamps[0]),
+        }),
+      );
+    }
+
+    timestamps.push(now);
+    requestLogs.set(ip, timestamps);
+  });
+
   app.setErrorHandler((error: FastifyError, request, reply) => {
     if (error instanceof AppError) {
       // Expected failures are the caller's business, so log them quietly.
