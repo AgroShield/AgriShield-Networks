@@ -31,6 +31,16 @@ pub enum PolicyStatus {
     Cancelled = 3,
 }
 
+/// Direction of the parametric trigger condition:
+/// * `BelowOrEqual`: pays when index <= threshold (drought, frost)
+/// * `AboveOrEqual`: pays when index >= threshold (flood, extreme heat, rainfall excess)
+#[contracttype]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum TriggerCondition {
+    BelowOrEqual = 0,
+    AboveOrEqual = 1,
+}
+
 /// A policy as stored by the registry, mirrored from `policy_registry::Policy`.
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -42,7 +52,7 @@ pub struct Policy {
     pub region_id: Symbol,
     pub coverage_start: u64,
     pub coverage_end: u64,
-    /// Index value at or below which the policy pays out.
+    /// Threshold index value deciding payout.
     pub trigger_threshold: i128,
     pub payout_amount: i128,
     pub premium: i128,
@@ -50,6 +60,8 @@ pub struct Policy {
     pub created_at: u64,
     /// Ledger timestamp the policy reached a terminal status; `0` while active.
     pub settled_at: u64,
+    /// Direction of trigger: BelowOrEqual (drought) or AboveOrEqual (flood).
+    pub trigger_condition: TriggerCondition,
 }
 
 impl Policy {

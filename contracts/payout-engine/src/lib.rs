@@ -53,7 +53,7 @@ mod types;
 #[cfg(test)]
 mod tests;
 
-pub use crate::abi::{IndexReading, Policy, PolicyStatus};
+pub use crate::abi::{IndexReading, Policy, PolicyStatus, TriggerCondition};
 pub use crate::clients::{
     OracleAdapterClient, OracleAdapterInterface, PolicyRegistryClient, PolicyRegistryInterface,
     PremiumPoolClient, PremiumPoolInterface,
@@ -64,7 +64,10 @@ pub use crate::events::{
     PolicyPaid,
 };
 pub use crate::storage::DataKey;
-pub use crate::trigger::{evaluate_terms, find_trigger, Decision};
+pub use crate::trigger::{
+    evaluate_terms, evaluate_terms_with_condition, find_trigger, find_trigger_with_condition,
+    matches_condition, Decision,
+};
 pub use crate::types::{Contracts, SettlementOutcome, SettlementStatus, TriggerEvaluation};
 
 use soroban_sdk::{contract, contractimpl, Address, Env, Symbol, Vec};

@@ -15,7 +15,7 @@
 //!    overlapping windows on the same `plot_hash` are rejected at creation.
 //! 3. The full `premium` is transferred into this contract's own token balance
 //!    (escrow) before the policy becomes readable. Premiums are only ever moved
-//!    out by `cancel_policy` (refund) or by the registered payout engine.
+//!    out by `cancel_policy` (refund) or forwarded to the pool upon settlement/expiry.
 //! 4. Only the admin may change configuration; only the registered payout
 //!    engine contract may mark a policy settled.
 //!
@@ -41,7 +41,7 @@ pub use crate::policy::{
     MAX_COVERAGE_WINDOW, MAX_PAYOUT_PREMIUM_RATIO_BPS, MAX_POLICIES_PER_PLOT, MIN_COVERAGE_WINDOW,
 };
 pub use crate::storage::DataKey;
-pub use crate::types::{Policy, PolicyStatus};
+pub use crate::types::{Policy, PolicyStatus, TriggerCondition};
 
 use soroban_sdk::{contract, contractimpl, Address, BytesN, Env, Symbol, Vec};
 
@@ -85,11 +85,8 @@ impl PolicyRegistry {
     // Policies
     // -----------------------------------------------------------------------
 
-    /// Mints a policy and escrows `premium` from `farmer`.
-    ///
-    /// Returns the new policy id. See [`policy::validate_parameters`] for the
-    /// parameter rules and [`policy::assert_no_overlapping_policy`] for the
-    /// double-insurance guard.
+    /// Mints a policy and escrows `premium` from `farmer`, defaulting to `BelowOrEqual`
+    /// trigger condition (drought/frost).
     #[allow(clippy::too_many_arguments)]
     pub fn create_policy(
         env: Env,
@@ -102,6 +99,37 @@ impl PolicyRegistry {
         trigger_threshold: i128,
         payout_amount: i128,
         premium: i128,
+    ) -> Result<u64, Error> {
+        Self::create_policy_with_condition(
+            env,
+            farmer,
+            plot_hash,
+            crop_type,
+            region_id,
+            coverage_start,
+            coverage_end,
+            trigger_threshold,
+            payout_amount,
+            premium,
+            TriggerCondition::BelowOrEqual,
+        )
+    }
+
+    /// Mints a policy with an explicit trigger condition (`BelowOrEqual` for drought/frost,
+    /// `AboveOrEqual` for flood/heatwave/rainfall excess).
+    #[allow(clippy::too_many_arguments)]
+    pub fn create_policy_with_condition(
+        env: Env,
+        farmer: Address,
+        plot_hash: BytesN<32>,
+        crop_type: Symbol,
+        region_id: Symbol,
+        coverage_start: u64,
+        coverage_end: u64,
+        trigger_threshold: i128,
+        payout_amount: i128,
+        premium: i128,
+        trigger_condition: TriggerCondition,
     ) -> Result<u64, Error> {
         if !storage::is_initialized(&env) {
             return Err(Error::NotInitialized);
@@ -142,6 +170,7 @@ impl PolicyRegistry {
             status: PolicyStatus::Active,
             created_at: now,
             settled_at: 0,
+            trigger_condition,
         };
 
         // Escrow before publishing the policy so a failing transfer cannot
@@ -256,11 +285,6 @@ impl PolicyRegistry {
 
     /// Marks a policy expired once its window closed without a trigger.
     /// Permissionless so the settlement keeper is not a single point of failure.
-    ///
-    /// Expiry opens once the clock is *past* `coverage_end`, one second after
-    /// cover ends. The payout engine's clock is the same one, so a settlement at
-    /// the closing instant reports `Pending` rather than attempting a transition
-    /// this entry point would reject.
     pub fn expire_policy(env: Env, policy_id: u64) -> Result<(), Error> {
         let mut record = storage::get_policy(&env, policy_id)?;
         if !record.is_active() {
