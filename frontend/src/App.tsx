@@ -8,6 +8,7 @@ import { PolicyDetail } from './components/PolicyDetail';
 import { PolicyList } from './components/PolicyList';
 import { SearchForm, type SearchValues } from './components/SearchForm';
 import { WalletButton } from './components/WalletButton';
+import { CreatePolicyModal, type CreatePolicyValues } from './components/CreatePolicyModal';
 import { useAsync } from './useAsync';
 
 /** How many policies a search hydrates before anyone asks for more. */
@@ -29,6 +30,7 @@ const MAX_LIMIT = 100;
 export function App({ client }: { readonly client: ApiClient }): ReactElement {
   const [search, setSearch] = useState<SearchValues | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
 
   const health = useAsync(() => client.health(), []);
   const keeper = useAsync(() => client.keeperStatus(), []);
@@ -71,8 +73,16 @@ export function App({ client }: { readonly client: ApiClient }): ReactElement {
 
       <main className="app__main">
         <section className="panel" aria-label="Policy lookup">
-          <header className="panel__header">
+          <header className="panel__header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h2 className="panel__title">Policies</h2>
+            <button
+              type="button"
+              className="button button--secondary button--small"
+              onClick={() => setIsCreateOpen(true)}
+              aria-label="Create Policy"
+            >
+              + Create Policy
+            </button>
           </header>
           <SearchForm
             onSearch={(values) => {
@@ -130,6 +140,16 @@ export function App({ client }: { readonly client: ApiClient }): ReactElement {
       </main>
 
       <KeeperPanel state={keeper.state} onRefresh={keeper.reload} />
+
+      <CreatePolicyModal
+        isOpen={isCreateOpen}
+        onClose={() => setIsCreateOpen(false)}
+        onSubmit={async () => {
+          if (search !== null) {
+            list.reload();
+          }
+        }}
+      />
     </div>
   );
 }

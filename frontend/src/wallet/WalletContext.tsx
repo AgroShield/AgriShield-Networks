@@ -64,10 +64,17 @@ export function WalletProvider({ children, adapter = defaultWalletAdapter }: Wal
   return <WalletContext.Provider value={value}>{children}</WalletContext.Provider>;
 }
 
+const DEFAULT_WALLET_VALUE: WalletContextValue = {
+  account: null,
+  isConnected: false,
+  isConnecting: false,
+  error: null,
+  connect: async () => {},
+  disconnect: async () => {},
+  signTransaction: async (xdr) => xdr,
+};
+
 export function useWallet(): WalletContextValue {
   const ctx = useContext(WalletContext);
-  if (!ctx) {
-    throw new Error('useWallet must be used within a WalletProvider');
-  }
-  return ctx;
+  return ctx ?? DEFAULT_WALLET_VALUE;
 }
