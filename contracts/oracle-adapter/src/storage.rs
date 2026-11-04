@@ -258,6 +258,12 @@ pub fn remove_pending(env: &Env, region_id: &Symbol, timestamp: u64) {
         .remove(&DataKey::Pending(region_id.clone(), timestamp));
 }
 
+pub fn has_pending(env: &Env, region_id: &Symbol, timestamp: u64) -> bool {
+    env.storage()
+        .persistent()
+        .has(&DataKey::Pending(region_id.clone(), timestamp))
+}
+
 /// True when a reading for this (region, timestamp) is already finalized, i.e.
 /// it is present in history or is the current latest reading.
 pub fn is_finalized(env: &Env, region_id: &Symbol, timestamp: u64) -> bool {

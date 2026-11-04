@@ -266,6 +266,37 @@ impl OracleAdapter {
         })
     }
 
+    /// Prunes an orphaned or stale pending reading from persistent storage.
+    /// Callable by admin, or if the reading timestamp is older than the latest finalized reading.
+    pub fn prune_pending_reading(
+        env: Env,
+        caller: Address,
+        region_id: Symbol,
+        timestamp: u64,
+    ) -> Result<(), Error> {
+        caller.require_auth();
+        if !storage::is_initialized(&env) {
+            return Err(Error::NotInitialized);
+        }
+        let is_admin = storage::get_admin(&env)? == caller;
+        let is_stale = if let Ok(latest) = storage::get_latest(&env, &region_id) {
+            timestamp <= latest.timestamp
+        } else {
+            false
+        };
+
+        if !is_admin && !is_stale {
+            return Err(Error::Unauthorized);
+        }
+
+        if !storage::has_pending(&env, &region_id, timestamp) {
+            return Err(Error::NoPendingReading);
+        }
+
+        storage::remove_pending(&env, &region_id, timestamp);
+        Ok(())
+    }
+
     // -----------------------------------------------------------------------
     // Views
     // -----------------------------------------------------------------------
