@@ -141,14 +141,14 @@ impl PayoutEngine {
             policy.coverage_start,
             policy.coverage_end,
         )?;
-        let decision = trigger::evaluate_terms(
+        let decision = trigger::evaluate_terms_with_condition(
             &history,
             policy.coverage_start,
             policy.coverage_end,
             policy.trigger_threshold,
             env.ledger().timestamp(),
+            policy.trigger_condition,
         );
-
         match decision {
             trigger::Decision::Triggered(reading) => {
                 pay(&env, &policy, &reading)?;
@@ -270,12 +270,13 @@ impl PayoutEngine {
             policy.coverage_start,
             policy.coverage_end,
         )?;
-        let decision = trigger::evaluate_terms(
+        let decision = trigger::evaluate_terms_with_condition(
             &history,
             policy.coverage_start,
             policy.coverage_end,
             policy.trigger_threshold,
             env.ledger().timestamp(),
+            policy.trigger_condition,
         );
         let (index_value, reading_timestamp) = match decision.reading() {
             Some(reading) => (reading.index_value, reading.timestamp),
