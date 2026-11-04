@@ -26,6 +26,7 @@ pub enum DataKey {
     Admin,
     PremiumToken,
     PayoutEngine,
+    PremiumPool,
     PolicyCount,
     Policy(u64),
     PlotPolicies(BytesN<32>),
@@ -78,6 +79,17 @@ pub fn get_payout_engine(env: &Env) -> Result<Address, Error> {
     env.storage()
         .instance()
         .get(&DataKey::PayoutEngine)
+        .ok_or(Error::NotInitialized)
+}
+
+pub fn set_premium_pool(env: &Env, pool: &Address) {
+    env.storage().instance().set(&DataKey::PremiumPool, pool);
+}
+
+pub fn get_premium_pool(env: &Env) -> Result<Address, Error> {
+    env.storage()
+        .instance()
+        .get(&DataKey::PremiumPool)
         .ok_or(Error::NotInitialized)
 }
 

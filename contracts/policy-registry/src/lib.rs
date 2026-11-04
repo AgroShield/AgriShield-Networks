@@ -81,6 +81,18 @@ impl PolicyRegistry {
         Ok(())
     }
 
+    /// Registers the premium pool contract allowed to receive forwarded premiums. Admin-only.
+    pub fn set_premium_pool(
+        env: Env,
+        admin: Address,
+        premium_pool: Address,
+    ) -> Result<(), Error> {
+        admin.require_auth();
+        storage::require_admin(&env, &admin)?;
+        storage::set_premium_pool(&env, &premium_pool);
+        Ok(())
+    }
+
     // -----------------------------------------------------------------------
     // Policies
     // -----------------------------------------------------------------------
@@ -271,6 +283,11 @@ impl PolicyRegistry {
         let now = env.ledger().timestamp();
         policy::transition(&mut record, PolicyStatus::Settled, now)?;
         storage::save_policy(&env, &record);
+
+        // Forward the escrowed premium to the premium pool to capitalize reserves for payouts
+        if let Ok(pool) = storage::get_premium_pool(&env) {
+            let _ = policy::release_escrow(&env, &pool, record.premium);
+        }
         events::policy_status_changed(
             &env,
             &PolicyStatusChanged {
@@ -322,5 +339,9 @@ impl PolicyRegistry {
 
     pub fn payout_engine(env: Env) -> Result<Address, Error> {
         storage::get_payout_engine(&env)
+    }
+
+    pub fn premium_pool(env: Env) -> Result<Address, Error> {
+        storage::get_premium_pool(&env)
     }
 }
