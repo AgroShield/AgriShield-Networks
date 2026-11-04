@@ -264,6 +264,13 @@ impl PolicyRegistry {
         let now = env.ledger().timestamp();
         policy::transition(&mut record, PolicyStatus::Cancelled, now)?;
         storage::save_policy(&env, &record);
+
+        // Release recognized liability from the pool so capital is freed on cancellation
+        if let Ok(engine_addr) = storage::get_payout_engine(&env) {
+            let engine = policy::PayoutEngineClient::new(&env, &engine_addr);
+            let _ = engine.try_release_liability(&policy_id);
+        }
+
         events::policy_status_changed(
             &env,
             &PolicyStatusChanged {
