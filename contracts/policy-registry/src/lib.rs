@@ -126,6 +126,14 @@ impl PolicyRegistry {
         storage::is_paused(&env)
     }
 
+    /// Admin-only upgrade of contract executable WASM bytecode.
+    pub fn upgrade(env: Env, admin: Address, new_wasm_hash: BytesN<32>) -> Result<(), Error> {
+        admin.require_auth();
+        storage::require_admin(&env, &admin)?;
+        env.deployer().update_current_contract_wasm(new_wasm_hash);
+        Ok(())
+    }
+
     // -----------------------------------------------------------------------
     // Policies
     // -----------------------------------------------------------------------

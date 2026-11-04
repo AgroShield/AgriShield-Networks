@@ -49,7 +49,7 @@ pub use crate::types::{
     PoolStats, DEFAULT_MIN_SOLVENCY_RATIO_BPS, FULLY_COLLATERALISED_BPS, MAX_SOLVENCY_RATIO_BPS,
 };
 
-use soroban_sdk::{contract, contractimpl, token, Address, Env};
+use soroban_sdk::{contract, contractimpl, token, Address, BytesN, Env};
 
 /// Storage-facing implementation of the AgriShield premium pool.
 #[contract]
@@ -150,6 +150,14 @@ impl PremiumPool {
     /// Whether the pool is currently paused.
     pub fn is_paused(env: Env) -> bool {
         storage::is_paused(&env)
+    }
+
+    /// Admin-only upgrade of contract executable WASM bytecode.
+    pub fn upgrade(env: Env, admin: Address, new_wasm_hash: BytesN<32>) -> Result<(), Error> {
+        admin.require_auth();
+        storage::require_admin(&env, &admin)?;
+        env.deployer().update_current_contract_wasm(new_wasm_hash);
+        Ok(())
     }
 
     // -----------------------------------------------------------------------
