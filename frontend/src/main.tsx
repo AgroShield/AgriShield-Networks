@@ -13,6 +13,7 @@ import { createRoot } from 'react-dom/client';
 import { App } from './App';
 import { createApiClient } from './api/client';
 import { apiBaseUrl } from './env';
+import { WalletProvider } from './wallet/WalletContext';
 import './styles.css';
 
 const container = document.getElementById('root');
@@ -24,6 +25,8 @@ if (container === null) {
 
 createRoot(container).render(
   <StrictMode>
-    <App client={createApiClient({ baseUrl: apiBaseUrl(import.meta.env.VITE_API_BASE_URL) })} />
+    <WalletProvider>
+      <App client={createApiClient({ baseUrl: apiBaseUrl(import.meta.env.VITE_API_BASE_URL) })} />
+    </WalletProvider>
   </StrictMode>,
 );

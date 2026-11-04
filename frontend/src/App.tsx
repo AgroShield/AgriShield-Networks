@@ -7,6 +7,7 @@ import { Notice } from './components/Notice';
 import { PolicyDetail } from './components/PolicyDetail';
 import { PolicyList } from './components/PolicyList';
 import { SearchForm, type SearchValues } from './components/SearchForm';
+import { WalletButton } from './components/WalletButton';
 import { useAsync } from './useAsync';
 
 /** How many policies a search hydrates before anyone asks for more. */
@@ -62,7 +63,10 @@ export function App({ client }: { readonly client: ApiClient }): ReactElement {
             Parametric drought cover on Stellar, read through the backend API.
           </p>
         </div>
-        <HealthPanel state={health.state} onRefresh={health.reload} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <WalletButton />
+          <HealthPanel state={health.state} onRefresh={health.reload} />
+        </div>
       </header>
 
       <main className="app__main">
