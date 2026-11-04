@@ -9,6 +9,7 @@ import { PolicyList } from './components/PolicyList';
 import { SearchForm, type SearchValues } from './components/SearchForm';
 import { WalletButton } from './components/WalletButton';
 import { CreatePolicyModal, type CreatePolicyValues } from './components/CreatePolicyModal';
+import { PoolPanel } from './components/PoolPanel';
 import { useAsync } from './useAsync';
 
 /** How many policies a search hydrates before anyone asks for more. */
@@ -138,6 +139,8 @@ export function App({ client }: { readonly client: ApiClient }): ReactElement {
           )}
         </section>
       </main>
+
+      <PoolPanel />
 
       <KeeperPanel state={keeper.state} onRefresh={keeper.reload} />
 
