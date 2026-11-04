@@ -15,6 +15,7 @@ use crate::error::Error;
 pub enum DataKey {
     Admin,
     PendingAdmin,
+    Paused,
     Token,
     PayoutEngine,
     MinSolvencyRatioBps,
@@ -50,6 +51,17 @@ pub fn get_pending_admin(env: &Env) -> Option<Address> {
 
 pub fn clear_pending_admin(env: &Env) {
     env.storage().instance().remove(&DataKey::PendingAdmin);
+}
+
+pub fn is_paused(env: &Env) -> bool {
+    env.storage()
+        .instance()
+        .get(&DataKey::Paused)
+        .unwrap_or(false)
+}
+
+pub fn set_paused(env: &Env, paused: bool) {
+    env.storage().instance().set(&DataKey::Paused, &paused);
 }
 
 pub fn get_admin(env: &Env) -> Result<Address, Error> {

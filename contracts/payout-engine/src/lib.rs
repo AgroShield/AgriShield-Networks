@@ -137,6 +137,19 @@ impl PayoutEngine {
         Ok(())
     }
 
+    /// Admin-only circuit breaker to pause/unpause settlement processing in an emergency.
+    pub fn set_paused(env: Env, admin: Address, paused: bool) -> Result<(), Error> {
+        admin.require_auth();
+        storage::require_admin(&env, &admin)?;
+        storage::set_paused(&env, paused);
+        Ok(())
+    }
+
+    /// Whether the payout engine is currently paused.
+    pub fn is_paused(env: Env) -> bool {
+        storage::is_paused(&env)
+    }
+
     // -----------------------------------------------------------------------
     // Settlement
     // -----------------------------------------------------------------------
@@ -154,6 +167,9 @@ impl PayoutEngine {
     /// impossible, because the registry and the pool each independently verify
     /// that the *calling contract* is their registered payout engine.
     pub fn settle_policy(env: Env, policy_id: u64) -> Result<SettlementOutcome, Error> {
+        if storage::is_paused(&env) {
+            return Err(Error::ContractPaused);
+        }
         let policy = load_active_policy(&env, policy_id)?;
         let history = load_history(
             &env,

@@ -25,6 +25,7 @@ pub const PERSISTENT_TTL_EXTEND_TO: u32 = 6_220_800; // ~360 days
 pub enum DataKey {
     Admin,
     PendingAdmin,
+    Paused,
     PremiumToken,
     PayoutEngine,
     PremiumPool,
@@ -61,6 +62,17 @@ pub fn get_pending_admin(env: &Env) -> Option<Address> {
 
 pub fn clear_pending_admin(env: &Env) {
     env.storage().instance().remove(&DataKey::PendingAdmin);
+}
+
+pub fn is_paused(env: &Env) -> bool {
+    env.storage()
+        .instance()
+        .get(&DataKey::Paused)
+        .unwrap_or(false)
+}
+
+pub fn set_paused(env: &Env, paused: bool) {
+    env.storage().instance().set(&DataKey::Paused, &paused);
 }
 
 /// Fails with [`Error::NotInitialized`] / [`Error::Unauthorized`] unless

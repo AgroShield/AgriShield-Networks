@@ -113,6 +113,19 @@ impl PolicyRegistry {
         Ok(())
     }
 
+    /// Admin-only circuit breaker to pause/unpause policy creation in an emergency.
+    pub fn set_paused(env: Env, admin: Address, paused: bool) -> Result<(), Error> {
+        admin.require_auth();
+        storage::require_admin(&env, &admin)?;
+        storage::set_paused(&env, paused);
+        Ok(())
+    }
+
+    /// Whether policy creation is currently paused.
+    pub fn is_paused(env: Env) -> bool {
+        storage::is_paused(&env)
+    }
+
     // -----------------------------------------------------------------------
     // Policies
     // -----------------------------------------------------------------------
@@ -165,6 +178,9 @@ impl PolicyRegistry {
     ) -> Result<u64, Error> {
         if !storage::is_initialized(&env) {
             return Err(Error::NotInitialized);
+        }
+        if storage::is_paused(&env) {
+            return Err(Error::ContractPaused);
         }
         farmer.require_auth();
 

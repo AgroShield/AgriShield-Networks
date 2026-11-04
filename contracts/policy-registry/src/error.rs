@@ -39,4 +39,6 @@ pub enum Error {
     PolicyNotActive = 13,
     /// Escrowing the premium failed (usually insufficient token balance).
     PremiumTransferFailed = 14,
+    /// The contract is temporarily paused by the admin.
+    ContractPaused = 15,
 }

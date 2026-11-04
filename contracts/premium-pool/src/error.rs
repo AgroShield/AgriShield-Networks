@@ -28,4 +28,6 @@ pub enum Error {
     LiabilityUnderflow = 9,
     /// The pool would have a negative reserve balance after the operation.
     NegativeReserves = 10,
+    /// The pool is temporarily paused by the admin.
+    ContractPaused = 11,
 }

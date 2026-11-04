@@ -38,4 +38,6 @@ pub enum Error {
     CoverageStillOpen = 13,
     /// Liability may only be dropped for a policy that is no longer live.
     PolicyStillActive = 14,
+    /// The payout engine is temporarily paused by the admin.
+    ContractPaused = 15,
 }

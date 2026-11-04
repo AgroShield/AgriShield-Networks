@@ -139,6 +139,19 @@ impl PremiumPool {
         Ok(())
     }
 
+    /// Admin-only circuit breaker to pause/unpause pool operations in an emergency.
+    pub fn set_paused(env: Env, admin: Address, paused: bool) -> Result<(), Error> {
+        admin.require_auth();
+        storage::require_admin(&env, &admin)?;
+        storage::set_paused(&env, paused);
+        Ok(())
+    }
+
+    /// Whether the pool is currently paused.
+    pub fn is_paused(env: Env) -> bool {
+        storage::is_paused(&env)
+    }
+
     // -----------------------------------------------------------------------
     // Capital in
     // -----------------------------------------------------------------------
@@ -149,6 +162,9 @@ impl PremiumPool {
     pub fn deposit(env: Env, from: Address, amount: i128) -> Result<(), Error> {
         if !storage::is_initialized(&env) {
             return Err(Error::NotInitialized);
+        }
+        if storage::is_paused(&env) {
+            return Err(Error::ContractPaused);
         }
         if amount <= 0 {
             return Err(Error::InvalidAmount);
@@ -270,6 +286,9 @@ impl PremiumPool {
     ) -> Result<(), Error> {
         admin.require_auth();
         storage::require_admin(&env, &admin)?;
+        if storage::is_paused(&env) {
+            return Err(Error::ContractPaused);
+        }
         if amount <= 0 {
             return Err(Error::InvalidAmount);
         }

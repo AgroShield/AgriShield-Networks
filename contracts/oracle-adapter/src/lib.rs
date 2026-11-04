@@ -96,6 +96,19 @@ impl OracleAdapter {
         Ok(())
     }
 
+    /// Admin-only circuit breaker to pause/unpause oracle submissions.
+    pub fn set_paused(env: Env, admin: Address, paused: bool) -> Result<(), Error> {
+        admin.require_auth();
+        storage::require_admin(&env, &admin)?;
+        storage::set_paused(&env, paused);
+        Ok(())
+    }
+
+    /// Whether oracle submissions are currently paused.
+    pub fn is_paused(env: Env) -> bool {
+        storage::is_paused(&env)
+    }
+
     /// Registers an authorised oracle signer. Admin-only.
     pub fn add_signer(env: Env, admin: Address, signer: Address) -> Result<(), Error> {
         admin.require_auth();
@@ -191,6 +204,9 @@ impl OracleAdapter {
     ) -> Result<SubmissionOutcome, Error> {
         if !storage::is_initialized(&env) {
             return Err(Error::NotInitialized);
+        }
+        if storage::is_paused(&env) {
+            return Err(Error::ContractPaused);
         }
         signer.require_auth();
         storage::require_signer(&env, &signer)?;

@@ -46,4 +46,6 @@ pub enum Error {
     IndexOutOfRange = 18,
     /// The signer set is at its cap; remove a signer before adding another.
     SignerSetFull = 19,
+    /// The oracle adapter is temporarily paused by the admin.
+    ContractPaused = 20,
 }
