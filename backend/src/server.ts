@@ -33,6 +33,7 @@ export interface RouteDeps {
   readonly addresses: ContractAddresses;
   readonly network: string;
   readonly keeper: SettlementKeeper | undefined;
+  readonly apiKey?: string | undefined;
 }
 
 /** Creates the Fastify instance, its logger and its error handling. */
@@ -151,6 +152,7 @@ export function registerRoutes(app: FastifyInstance, deps: RouteDeps): void {
     contracts: deps.contracts,
     keeper: deps.keeper,
     canSubmit: deps.gateway.canSubmit,
+    apiKey: deps.apiKey,
   });
 }
 

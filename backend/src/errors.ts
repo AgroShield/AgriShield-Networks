@@ -13,7 +13,7 @@
  */
 
 /** HTTP status codes the API uses deliberately. */
-export type ErrorStatus = 400 | 404 | 409 | 502 | 503;
+export type ErrorStatus = 400 | 401 | 404 | 409 | 502 | 503;
 
 export class AppError extends Error {
   readonly statusCode: ErrorStatus;
@@ -37,6 +37,11 @@ export function describeError(cause: unknown): string {
 /** 400 — the request itself is wrong and retrying it unchanged will not help. */
 export function badRequest(code: string, message: string, details?: unknown): AppError {
   return new AppError(400, code, message, details);
+}
+
+/** 401 — the request lacks valid authentication credentials. */
+export function unauthorized(code: string, message: string, details?: unknown): AppError {
+  return new AppError(401, code, message, details);
 }
 
 /** 502 — an upstream contract call was rejected. */

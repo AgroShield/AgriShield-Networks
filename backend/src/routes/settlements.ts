@@ -14,7 +14,7 @@ import type { FastifyInstance } from 'fastify';
 
 import type { Contracts } from '../contracts/clients.js';
 import type { SettlementKeeper } from '../keeper/keeper.js';
-import { unavailable } from '../errors.js';
+import { unauthorized, unavailable } from '../errors.js';
 import { serializeOutcome, serializeSweep, type SettlementOutcomeResponse } from '../serializers.js';
 import { POLICY_ID_PARAMS, policyIdFrom } from './shared.js';
 
@@ -23,6 +23,8 @@ export interface SettlementRouteDeps {
   /** Absent when this deployment runs read-only. */
   readonly keeper: SettlementKeeper | undefined;
   readonly canSubmit: boolean;
+  /** Optional API key required for manual settlement invocation. */
+  readonly apiKey?: string | undefined;
 }
 
 interface SubmitResponse {
@@ -54,6 +56,18 @@ export function registerSettlementRoutes(app: FastifyInstance, deps: SettlementR
     '/settlements/:policyId',
     { schema: { params: POLICY_ID_PARAMS } },
     async (request): Promise<SubmitResponse> => {
+      if (deps.apiKey !== undefined && deps.apiKey !== '') {
+        const authHeader = request.headers.authorization;
+        const headerKey =
+          request.headers['x-api-key'] ||
+          (typeof authHeader === 'string' && authHeader.startsWith('Bearer ')
+            ? authHeader.slice(7).trim()
+            : undefined);
+        if (headerKey !== deps.apiKey) {
+          throw unauthorized('unauthorized', 'invalid or missing keeper api key');
+        }
+      }
+
       if (!deps.canSubmit) {
         throw unavailable(
           'keeper_disabled',
