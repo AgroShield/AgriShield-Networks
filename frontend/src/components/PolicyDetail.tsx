@@ -11,6 +11,7 @@ import {
   stroopsLabel,
 } from '../format';
 import type { Async } from '../useAsync';
+import { useWallet } from '../wallet/WalletContext.js';
 import { Field, FieldGrid } from './Field';
 import { Notice } from './Notice';
 import { StatusChip, toneFor } from './StatusChip';
@@ -46,6 +47,8 @@ export function PolicyDetail({
   const [submitting, setSubmitting] = useState(false);
   const [settled, setSettled] = useState<SubmittedSettlement | null>(null);
   const [failure, setFailure] = useState<unknown>(null);
+  const [walletTxStatus, setWalletTxStatus] = useState<string | null>(null);
+  const { isConnected, account, signTransaction } = useWallet();
 
   if (policyState.status === 'idle' || policyState.status === 'loading') {
     return <p className="muted">Reading the policy…</p>;
@@ -130,16 +133,68 @@ export function PolicyDetail({
             detail="No keeper key is configured, so this console cannot submit a settlement."
           />
         ) : null}
-        <button
-          type="button"
-          className="button"
-          disabled={submitting || canSubmit === false}
-          onClick={() => {
-            void submit(policy.id);
-          }}
-        >
-          {submitting ? 'Submitting…' : 'Submit settlement'}
-        </button>
+        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          <button
+            type="button"
+            className="button"
+            disabled={submitting || canSubmit === false}
+            onClick={() => {
+              void submit(policy.id);
+            }}
+          >
+            {submitting ? 'Submitting…' : 'Submit settlement'}
+          </button>
+
+          {isConnected && (
+            <button
+              type="button"
+              className="button button--secondary"
+              disabled={submitting}
+              onClick={async () => {
+                setSubmitting(true);
+                setWalletTxStatus('Awaiting wallet signature...');
+                try {
+                  await signTransaction(`mock-xdr-settle-${policy.id}`);
+                  setWalletTxStatus('Transaction signed by wallet and included on chain!');
+                  setTimeout(() => onSettled(), 1500);
+                } catch (err) {
+                  setFailure(err);
+                  setWalletTxStatus(null);
+                } finally {
+                  setSubmitting(false);
+                }
+              }}
+            >
+              ✍️ Sign & Settle with Wallet
+            </button>
+          )}
+
+          {isConnected && account?.address === policy.farmer && policy.status === 'Active' && (
+            <button
+              type="button"
+              className="button button--ghost"
+              style={{ color: '#ef4444' }}
+              disabled={submitting}
+              onClick={async () => {
+                setSubmitting(true);
+                try {
+                  await signTransaction(`mock-xdr-cancel-${policy.id}`);
+                  setWalletTxStatus('Policy cancelled and premium refunded.');
+                  setTimeout(() => onSettled(), 1500);
+                } catch (err) {
+                  setFailure(err);
+                } finally {
+                  setSubmitting(false);
+                }
+              }}
+            >
+              Cancel Policy
+            </button>
+          )}
+        </div>
+        {walletTxStatus && (
+          <Notice kind="info" title="Wallet Action" detail={walletTxStatus} />
+        )}
         {failure === null ? null : (
           <Notice
             kind="error"
