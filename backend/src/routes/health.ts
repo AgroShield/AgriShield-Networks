@@ -94,6 +94,56 @@ export function registerHealthRoutes(app: FastifyInstance, deps: HealthRouteDeps
     const body: HealthResponse = { ...base, status: 'ok', ledger, onChain, reason: null };
     return reply.code(200).send(body);
   });
+
+  app.get('/health/live', async () => ({
+    status: 'ok',
+    uptime: process.uptime(),
+  }));
+
+  app.get('/health/ready', async (_request, reply) => {
+    try {
+      await deps.gateway.latestLedger();
+      const onChain = await deps.contracts.engine.contracts();
+      if (!wiringMatches(deps.addresses, onChain)) {
+        return reply.code(503).send({ ready: false, reason: 'contract wiring mismatch' });
+      }
+      return reply.code(200).send({ ready: true });
+    } catch (cause) {
+      return reply.code(503).send({ ready: false, reason: describeError(cause) });
+    }
+  });
+
+  app.get('/metrics', async (_request, reply) => {
+    let latestLedger = 0;
+    try {
+      latestLedger = await deps.gateway.latestLedger();
+    } catch {
+      // metric remains 0
+    }
+    const mem = process.memoryUsage();
+    const uptime = process.uptime();
+    const lines = [
+      '# HELP agrishield_backend_uptime_seconds Process uptime in seconds',
+      '# TYPE agrishield_backend_uptime_seconds gauge',
+      `agrishield_backend_uptime_seconds ${uptime.toFixed(2)}`,
+      '# HELP agrishield_backend_memory_heap_used_bytes Heap memory used in bytes',
+      '# TYPE agrishield_backend_memory_heap_used_bytes gauge',
+      `agrishield_backend_memory_heap_used_bytes ${mem.heapUsed}`,
+      '# HELP agrishield_backend_memory_rss_bytes Resident set size in bytes',
+      '# TYPE agrishield_backend_memory_rss_bytes gauge',
+      `agrishield_backend_memory_rss_bytes ${mem.rss}`,
+      '# HELP agrishield_backend_latest_ledger Latest Soroban ledger seen by the node',
+      '# TYPE agrishield_backend_latest_ledger gauge',
+      `agrishield_backend_latest_ledger ${latestLedger}`,
+      '# HELP agrishield_keeper_enabled Whether the keeper is active on this instance',
+      '# TYPE agrishield_keeper_enabled gauge',
+      `agrishield_keeper_enabled ${deps.keeperEnabled ? 1 : 0}`,
+    ];
+
+    return reply
+      .header('Content-Type', 'text/plain; version=0.0.4; charset=utf-8')
+      .send(lines.join('\n') + '\n');
+  });
 }
 
 function wiringMatches(configured: ContractAddresses, onChain: EngineContracts): boolean {
