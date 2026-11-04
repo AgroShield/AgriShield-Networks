@@ -330,6 +330,26 @@ impl PolicyRegistry {
         Ok(())
     }
 
+    /// Allows the admin to sweep or reconcile escrowed tokens (e.g. forward to premium pool
+    /// or treasury). Admin-signed only.
+    pub fn forward_escrow(
+        env: Env,
+        admin: Address,
+        recipient: Address,
+        amount: i128,
+    ) -> Result<(), Error> {
+        admin.require_auth();
+        storage::require_admin(&env, &admin)?;
+        if amount <= 0 {
+            return Err(Error::InvalidPremium);
+        }
+        let balance = policy::escrow_balance(&env)?;
+        if amount > balance {
+            return Err(Error::PremiumTransferFailed);
+        }
+        policy::release_escrow(&env, &recipient, amount)
+    }
+
     // -----------------------------------------------------------------------
     // Views
     // -----------------------------------------------------------------------
