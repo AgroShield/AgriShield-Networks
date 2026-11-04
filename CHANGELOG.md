@@ -5,7 +5,31 @@ Notable changes to AgriShield. Format follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html), and this project is
 still pre-1.0 — the `0.x` line reserves the right to change behaviour.
 
-## [Unreleased]
+## [0.2.0] - 2026-11-04
+
+### Added
+
+- **Multi-directional parametric triggers**: added `TriggerCondition` enum (`BelowOrEqual` for drought/frost, `AboveOrEqual` for flood/heatwave) across contracts, payout engine, backend, and frontend.
+- **Automatic premium forwarding & escrow sweeps**: policy registry wires premium forwarding to the premium pool on settlement and expiration, with admin sweep recovery.
+- **Dynamic liability accrual & release**: premium pool recognizes liabilities upon policy creation and releases liabilities upon cancellation or expiry.
+- **Plot concurrency pruning**: automatically prunes inactive policies from the plot registry, preventing plot lockouts.
+- **Two-step governance transfer**: implemented `nominate_admin` and `accept_admin` across all four smart contracts.
+- **Emergency circuit breakers**: added `pause` and `resume` entrypoints across critical contract paths.
+- **Live WASM upgradeability**: added `upgrade(new_wasm_hash)` entrypoints to all four contracts.
+- **Soroban sequence mutex**: serialized transaction nonces in backend gateway, eliminating `txBAD_SEQ` race collisions.
+- **Resilient keeper polling**: added exponential backoff, XDR error decoding, and persistent cursor tracking across server restarts.
+- **Backend security & edge middleware**: rate limiting, CORS configuration, security headers, and optional API key authentication for settlement endpoints.
+- **OpenAPI & Observability**: integrated interactive Swagger UI at `/docs`, OpenAPI 3.0 schema at `/docs/json`, and Prometheus metrics at `/metrics`.
+- **Web3 Wallet Integration**: Stellar Wallets Kit support (Freighter & simulated Web3 demo account) in frontend with live account state.
+- **Farmer Policy Creation Modal**: self-service policy creation with live parameter validation, coverage multiple checks, and duration bounds.
+- **Direct Wallet Signing**: direct client-side signing for policy settlements and cancellations.
+- **Liquidity Pool & Solvency Dashboard**: live monitoring of pool reserves, liabilities, and reserve ratios with deposit capability.
+- **Oracle Signer Portal**: co-signature management interface for multi-party environmental observations.
+- **Accessibility & UX**: non-intrusive toast notifications and Light/Dark theme switching.
+- **Docker & DevOps**: multi-stage Dockerfiles for backend and frontend, root `docker-compose.yml`, and automated local devnet sandbox scripts (`setup-local-sandbox.sh` and `.ps1`).
+- **Comprehensive Architecture Documentation**: created `docs/ARCHITECTURE.md`.
+
+## [0.1.1] - 2026-10-20
 
 ### Fixed
 
