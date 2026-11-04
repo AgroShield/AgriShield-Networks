@@ -31,7 +31,7 @@ export function CreatePolicyModal({ isOpen, onClose, onSubmit }: CreatePolicyMod
   const [coverageDurationDays, setCoverageDurationDays] = useState(30);
   const [triggerCondition, setTriggerCondition] = useState<'BelowOrEqual' | 'AboveOrEqual'>('BelowOrEqual');
   const [triggerThreshold, setTriggerThreshold] = useState(650);
-  const [payoutAmount, setPayoutAmount] = useState(2000);
+  const [payoutAmount, setPayoutAmount] = useState(400);
   const [premium, setPremium] = useState(100);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -143,10 +143,11 @@ export function CreatePolicyModal({ isOpen, onClose, onSubmit }: CreatePolicyMod
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <div>
-            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.25rem' }}>
+            <label htmlFor="policy-farmer" style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.25rem' }}>
               Farmer Address (Beneficiary)
             </label>
             <input
+              id="policy-farmer"
               type="text"
               readOnly
               value={farmerAddress}
@@ -156,10 +157,11 @@ export function CreatePolicyModal({ isOpen, onClose, onSubmit }: CreatePolicyMod
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <div>
-              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.25rem' }}>
+              <label htmlFor="policy-crop" style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.25rem' }}>
                 Crop Type
               </label>
               <select
+                id="policy-crop"
                 value={cropType}
                 onChange={(e) => setCropType(e.target.value)}
                 style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '4px' }}
@@ -173,10 +175,11 @@ export function CreatePolicyModal({ isOpen, onClose, onSubmit }: CreatePolicyMod
             </div>
 
             <div>
-              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.25rem' }}>
-                Region Index
+              <label htmlFor="policy-region" style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.25rem' }}>
+                Geographic Region
               </label>
               <select
+                id="policy-region"
                 value={regionId}
                 onChange={(e) => setRegionId(e.target.value)}
                 style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '4px' }}
@@ -190,10 +193,11 @@ export function CreatePolicyModal({ isOpen, onClose, onSubmit }: CreatePolicyMod
           </div>
 
           <div>
-            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.25rem' }}>
+            <label htmlFor="policy-plot" style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.25rem' }}>
               Plot Identifier / Land Hash
             </label>
             <input
+              id="policy-plot"
               type="text"
               value={plotId}
               onChange={(e) => setPlotId(e.target.value)}
@@ -205,10 +209,11 @@ export function CreatePolicyModal({ isOpen, onClose, onSubmit }: CreatePolicyMod
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <div>
-              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.25rem' }}>
+              <label htmlFor="policy-starts" style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.25rem' }}>
                 Starts In (Days)
               </label>
               <input
+                id="policy-starts"
                 type="number"
                 min="1"
                 max="30"
@@ -219,10 +224,11 @@ export function CreatePolicyModal({ isOpen, onClose, onSubmit }: CreatePolicyMod
             </div>
 
             <div>
-              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.25rem' }}>
+              <label htmlFor="policy-duration" style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.25rem' }}>
                 Duration (Days, 7-180)
               </label>
               <input
+                id="policy-duration"
                 type="number"
                 min="7"
                 max="180"
@@ -235,10 +241,11 @@ export function CreatePolicyModal({ isOpen, onClose, onSubmit }: CreatePolicyMod
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <div>
-              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.25rem' }}>
+              <label htmlFor="policy-trigger" style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.25rem' }}>
                 Trigger Condition
               </label>
               <select
+                id="policy-trigger"
                 value={triggerCondition}
                 onChange={(e) => setTriggerCondition(e.target.value as 'BelowOrEqual' | 'AboveOrEqual')}
                 style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '4px' }}
@@ -249,10 +256,11 @@ export function CreatePolicyModal({ isOpen, onClose, onSubmit }: CreatePolicyMod
             </div>
 
             <div>
-              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.25rem' }}>
+              <label htmlFor="policy-threshold" style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.25rem' }}>
                 Threshold Index Value
               </label>
               <input
+                id="policy-threshold"
                 type="number"
                 value={triggerThreshold}
                 onChange={(e) => setTriggerThreshold(Number(e.target.value))}
