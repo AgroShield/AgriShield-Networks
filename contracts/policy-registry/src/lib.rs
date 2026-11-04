@@ -313,6 +313,11 @@ impl PolicyRegistry {
         }
         policy::transition(&mut record, PolicyStatus::Expired, now)?;
         storage::save_policy(&env, &record);
+
+        // Forward expired premium into the premium pool as earned risk underwriting income
+        if let Ok(pool) = storage::get_premium_pool(&env) {
+            let _ = policy::release_escrow(&env, &pool, record.premium);
+        }
         events::policy_status_changed(
             &env,
             &PolicyStatusChanged {
