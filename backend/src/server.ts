@@ -76,14 +76,10 @@ export function createApp(config: AppConfig): FastifyInstance {
     const now = Date.now();
     const timestamps = (requestLogs.get(ip) ?? []).filter((ts) => now - ts < rateLimitWindowMs);
 
-    const remaining = Math.max(0, rateLimitMax - timestamps.length);
-    const reset = Math.ceil((now + rateLimitWindowMs) / 1000);
-
-    reply.header('x-ratelimit-limit', rateLimitMax);
-    reply.header('x-ratelimit-remaining', remaining);
-    reply.header('x-ratelimit-reset', reset);
-
     if (timestamps.length >= rateLimitMax) {
+      reply.header('x-ratelimit-limit', rateLimitMax);
+      reply.header('x-ratelimit-remaining', 0);
+      reply.header('x-ratelimit-reset', Math.ceil((now + rateLimitWindowMs) / 1000));
       return reply.code(429).send(
         errorBody('rate_limit_exceeded', 'too many requests, please slow down', {
           retryAfterMs: rateLimitWindowMs - (now - timestamps[0]),
@@ -93,6 +89,13 @@ export function createApp(config: AppConfig): FastifyInstance {
 
     timestamps.push(now);
     requestLogs.set(ip, timestamps);
+
+    const remaining = Math.max(0, rateLimitMax - timestamps.length);
+    const reset = Math.ceil((now + rateLimitWindowMs) / 1000);
+
+    reply.header('x-ratelimit-limit', rateLimitMax);
+    reply.header('x-ratelimit-remaining', remaining);
+    reply.header('x-ratelimit-reset', reset);
   });
 
   app.setErrorHandler((error: FastifyError, request, reply) => {
