@@ -17,6 +17,7 @@ import { AppError, badGateway, unavailable, type ErrorStatus } from '../errors.j
 import type { ContractAddresses } from './addresses.js';
 
 export type { ContractAddresses };
+export type { Policy, Policy as PolicyRecord };
 import {
   ContractCallError,
   type InvocationResult,

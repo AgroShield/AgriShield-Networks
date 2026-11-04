@@ -82,7 +82,7 @@ export function createApp(config: AppConfig): FastifyInstance {
       reply.header('x-ratelimit-reset', Math.ceil((now + rateLimitWindowMs) / 1000));
       return reply.code(429).send(
         errorBody('rate_limit_exceeded', 'too many requests, please slow down', {
-          retryAfterMs: rateLimitWindowMs - (now - timestamps[0]),
+          retryAfterMs: rateLimitWindowMs - (now - (timestamps[0] ?? now)),
         }),
       );
     }

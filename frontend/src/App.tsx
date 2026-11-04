@@ -8,7 +8,7 @@ import { PolicyDetail } from './components/PolicyDetail';
 import { PolicyList } from './components/PolicyList';
 import { SearchForm, type SearchValues } from './components/SearchForm';
 import { WalletButton } from './components/WalletButton';
-import { CreatePolicyModal, type CreatePolicyValues } from './components/CreatePolicyModal';
+import { CreatePolicyModal } from './components/CreatePolicyModal';
 import { PoolPanel } from './components/PoolPanel';
 import { OraclePanel } from './components/OraclePanel';
 import { ThemeToggle } from './components/ThemeToggle';

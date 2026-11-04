@@ -21,7 +21,7 @@ interface PendingSubmission {
 }
 
 export function OraclePanel(): React.JSX.Element {
-  const { isConnected, account, signTransaction } = useWallet();
+  const { isConnected, signTransaction } = useWallet();
 
   const [readings] = useState<RegionalReading[]>([
     { region: 'US-MW', latestValue: 620, updatedAt: '12 minutes ago', status: 'finalized' },

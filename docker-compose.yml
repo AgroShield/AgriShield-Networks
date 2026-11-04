@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  soroban-rpc:
+    image: stellar/quickstart:latest
+    container_name: agrishield-soroban-rpc
+    command: ["--standalone", "--enable-soroban-rpc"]
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-s", "-f", "http://localhost:8000/soroban/rpc"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    profiles:
+      - standalone
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: agrishield-backend
+    ports:
+      - "3000:3000"
+    environment:
+      - HOST=0.0.0.0
+      - PORT=3000
+      - LOG_LEVEL=info
+      - SOROBAN_RPC_URL=${SOROBAN_RPC_URL:-https://soroban-testnet.stellar.org}
+      - SOROBAN_NETWORK=${SOROBAN_NETWORK:-testnet}
+      - POLICY_REGISTRY_CONTRACT_ID=${POLICY_REGISTRY_CONTRACT_ID:-CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA}
+      - PAYOUT_ENGINE_CONTRACT_ID=${PAYOUT_ENGINE_CONTRACT_ID:-CBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA}
+      - PREMIUM_POOL_CONTRACT_ID=${PREMIUM_POOL_CONTRACT_ID:-CCAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA}
+      - ORACLE_ADAPTER_CONTRACT_ID=${ORACLE_ADAPTER_CONTRACT_ID:-CDAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA}
+      - SOROBAN_READ_SOURCE=GBWMQ6G5PCHV7GZ3F7K4Y7YV454A6B6NNDYF4LGYIEXSDFJ6K7H2AAAA
+      - KEEPER_ENABLED=${KEEPER_ENABLED:-false}
+      - CORS_ORIGIN=*
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: agrishield-frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/"]
+      interval: 15s
+      timeout: 5s
+      retries: 3

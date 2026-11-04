@@ -73,7 +73,7 @@ export function PoolPanel(): React.JSX.Element {
         <h2 className="panel__title">💧 Premium Pool & Solvency</h2>
         <StatusChip
           label={isSolvent ? `Solvent (${ratioPercent}%)` : `Undercollateralized (${ratioPercent}%)`}
-          tone={isSolvent ? 'success' : 'failure'}
+          tone={isSolvent ? 'good' : 'bad'}
         />
       </header>
 

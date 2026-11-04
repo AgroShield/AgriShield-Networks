@@ -1,6 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import React from 'react';
 
 import { WalletProvider } from '../src/wallet/WalletContext';
 import { WalletButton } from '../src/components/WalletButton';
@@ -146,7 +145,9 @@ describe('OraclePanel component', () => {
     const cosignButtons = screen.getAllByRole('button', { name: /Co-sign Reading/i });
     expect(cosignButtons.length).toBeGreaterThan(0);
 
-    fireEvent.click(cosignButtons[0]);
+    const firstButton = cosignButtons[0];
+    if (!firstButton) throw new Error('Expected at least one cosign button');
+    fireEvent.click(firstButton);
 
     await waitFor(() => {
       expect(screen.getByText(/Reading co-signed and threshold met!/i)).toBeDefined();
