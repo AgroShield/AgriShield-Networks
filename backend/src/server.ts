@@ -17,6 +17,7 @@ import type { SettlementKeeper } from './keeper/keeper.js';
 import { registerHealthRoutes } from './routes/health.js';
 import { registerPolicyRoutes } from './routes/policies.js';
 import { registerSettlementRoutes } from './routes/settlements.js';
+import { registerDocsRoutes } from './routes/docs.js';
 
 /** Every error response has this shape, so clients need one parser. */
 export interface ErrorResponse {
@@ -165,6 +166,8 @@ export function registerRoutes(app: FastifyInstance, deps: RouteDeps): void {
     canSubmit: deps.gateway.canSubmit,
     apiKey: deps.apiKey,
   });
+
+  registerDocsRoutes(app);
 }
 
 function errorBody(code: string, message: string, details?: unknown): ErrorResponse {
