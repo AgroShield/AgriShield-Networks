@@ -3,7 +3,14 @@
 //! Kept separate from [`crate::PolicyRegistry`] so the invariants below are
 //! testable in isolation and the contract entry points stay thin.
 
-use soroban_sdk::{token, Address, BytesN, Env};
+use soroban_sdk::{contractclient, token, Address, BytesN, Env};
+
+#[allow(dead_code)]
+#[contractclient(name = "PayoutEngineClient")]
+pub trait PayoutEngineInterface {
+    fn register_liability(env: Env, policy_id: u64) -> Result<(), crate::error::Error>;
+    fn release_liability(env: Env, policy_id: u64) -> Result<(), crate::error::Error>;
+}
 
 use crate::error::Error;
 use crate::storage;

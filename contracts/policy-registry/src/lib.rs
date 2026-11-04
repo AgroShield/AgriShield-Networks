@@ -210,6 +210,12 @@ impl PolicyRegistry {
             },
         );
 
+        // Auto-register liability on the payout engine if wired, locking backing reserves
+        if let Ok(engine_addr) = storage::get_payout_engine(&env) {
+            let engine = policy::PayoutEngineClient::new(&env, &engine_addr);
+            let _ = engine.try_register_liability(&policy_id);
+        }
+
         Ok(policy_id)
     }
 
