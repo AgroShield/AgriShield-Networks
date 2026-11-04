@@ -11,6 +11,8 @@ import { WalletButton } from './components/WalletButton';
 import { CreatePolicyModal, type CreatePolicyValues } from './components/CreatePolicyModal';
 import { PoolPanel } from './components/PoolPanel';
 import { OraclePanel } from './components/OraclePanel';
+import { ThemeToggle } from './components/ThemeToggle';
+import { ToastProvider, useToast } from './components/Toast';
 import { useAsync } from './useAsync';
 
 /** How many policies a search hydrates before anyone asks for more. */
@@ -29,10 +31,11 @@ const MAX_LIMIT = 100;
  * A submitted search is held rather than the form's live value, so typing does
  * not re-query and a slow response cannot race a faster one for a different term.
  */
-export function App({ client }: { readonly client: ApiClient }): ReactElement {
+function AppContent({ client }: { readonly client: ApiClient }): ReactElement {
   const [search, setSearch] = useState<SearchValues | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const { showToast } = useToast();
 
   const health = useAsync(() => client.health(), []);
   const keeper = useAsync(() => client.keeperStatus(), []);
@@ -67,7 +70,8 @@ export function App({ client }: { readonly client: ApiClient }): ReactElement {
             Parametric drought cover on Stellar, read through the backend API.
           </p>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <ThemeToggle />
           <WalletButton />
           <HealthPanel state={health.state} onRefresh={health.reload} />
         </div>
@@ -132,6 +136,7 @@ export function App({ client }: { readonly client: ApiClient }): ReactElement {
               onRefreshPolicy={policy.reload}
               onRefreshPreview={preview.reload}
               onSettled={() => {
+                showToast('Policy settled successfully!', 'success');
                 policy.reload();
                 preview.reload();
                 keeper.reload();
@@ -151,12 +156,21 @@ export function App({ client }: { readonly client: ApiClient }): ReactElement {
         isOpen={isCreateOpen}
         onClose={() => setIsCreateOpen(false)}
         onSubmit={async () => {
+          showToast('Policy created and submitted to network!', 'success');
           if (search !== null) {
             list.reload();
           }
         }}
       />
     </div>
+  );
+}
+
+export function App({ client }: { readonly client: ApiClient }): ReactElement {
+  return (
+    <ToastProvider>
+      <AppContent client={client} />
+    </ToastProvider>
   );
 }
 
