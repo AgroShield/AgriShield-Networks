@@ -282,12 +282,29 @@ export class RpcSorobanGateway implements SorobanGateway {
     return response.sequence;
   }
 
-  /** Polls until the transaction is included, fails, or the budget runs out. */
+  /** Polls with exponential backoff until the transaction is included, fails, or the budget runs out. */
   private async awaitInclusion(call: ContractCall, hash: string): Promise<InvocationResult> {
     const deadline = Date.now() + this.submissionTimeoutMs;
+    let pollInterval = this.pollIntervalMs;
+    const maxPollInterval = Math.max(this.pollIntervalMs * 4, 5_000);
 
     for (;;) {
-      const result = await this.server.getTransaction(hash);
+      let result;
+      try {
+        result = await this.server.getTransaction(hash);
+      } catch (err) {
+        // Transient network error during poll: retry with backoff if within deadline
+        if (Date.now() >= deadline) {
+          throw new ContractCallError(
+            call.contractId,
+            call.method,
+            `transaction ${hash} poll failed: ${err instanceof Error ? err.message : String(err)}`,
+          );
+        }
+        await this.sleep(pollInterval);
+        pollInterval = Math.min(Math.round(pollInterval * 1.5), maxPollInterval);
+        continue;
+      }
 
       if (result.status === rpc.Api.GetTransactionStatus.SUCCESS) {
         return {
@@ -297,12 +314,24 @@ export class RpcSorobanGateway implements SorobanGateway {
         };
       }
       if (result.status === rpc.Api.GetTransactionStatus.FAILED) {
-        // The result XDR is the authoritative explanation and is not cheap to
-        // parse here, so the hash is reported as the handle for debugging.
+        let xdrInfo = '';
+        if (result.resultXdr) {
+          try {
+            xdrInfo = typeof (result.resultXdr as { toXDR?: (fmt: string) => string }).toXDR === 'function'
+              ? (result.resultXdr as { toXDR: (fmt: string) => string }).toXDR('base64')
+              : String(result.resultXdr);
+          } catch {
+            xdrInfo = String(result.resultXdr);
+          }
+        }
+        const message = xdrInfo
+          ? `transaction ${hash} failed: resultXdr=${xdrInfo}`
+          : `transaction ${hash} failed`;
         throw new ContractCallError(
           call.contractId,
           call.method,
-          `transaction ${hash} failed`,
+          message,
+          parseContractErrorCode(message),
         );
       }
       if (Date.now() >= deadline) {
@@ -313,7 +342,8 @@ export class RpcSorobanGateway implements SorobanGateway {
         );
       }
 
-      await this.sleep(this.pollIntervalMs);
+      await this.sleep(pollInterval);
+      pollInterval = Math.min(Math.round(pollInterval * 1.5), maxPollInterval);
     }
   }
 
