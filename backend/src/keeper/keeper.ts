@@ -59,6 +59,25 @@ export interface KeeperTotals {
   readonly failed: number;
 }
 
+/** Persistent storage interface to remember keeper sweep progress across restarts. */
+export interface CursorStore {
+  getCursor(): Promise<bigint | undefined>;
+  setCursor(cursor: bigint): Promise<void>;
+}
+
+export class MemoryCursorStore implements CursorStore {
+  private cursor: bigint | undefined;
+  constructor(initial?: bigint) {
+    this.cursor = initial;
+  }
+  async getCursor(): Promise<bigint | undefined> {
+    return this.cursor;
+  }
+  async setCursor(cursor: bigint): Promise<void> {
+    this.cursor = cursor;
+  }
+}
+
 export interface KeeperStatus {
   readonly running: boolean;
   /** Next policy id the sweep will start from. */
@@ -86,6 +105,10 @@ export interface KeeperOptions {
   readonly logger: KeeperLogger;
   /** Injected so a test can pin the report's timestamps. */
   readonly now?: (() => number) | undefined;
+  /** Explicit starting cursor (defaults to 1n). */
+  readonly initialCursor?: bigint | undefined;
+  /** Optional store to persist cursor progress across server restarts. */
+  readonly cursorStore?: CursorStore | undefined;
 }
 
 export class SettlementKeeper {
@@ -95,6 +118,7 @@ export class SettlementKeeper {
   private readonly batchSize: number;
   private readonly logger: KeeperLogger;
   private readonly now: () => number;
+  private readonly cursorStore?: CursorStore | undefined;
 
   /** Next policy id to start a sweep from; wraps at the newest. */
   private cursor = 1n;
@@ -111,6 +135,10 @@ export class SettlementKeeper {
     this.batchSize = options.batchSize;
     this.logger = options.logger;
     this.now = options.now ?? (() => Date.now());
+    this.cursorStore = options.cursorStore;
+    if (options.initialCursor !== undefined) {
+      this.cursor = options.initialCursor;
+    }
   }
 
   /** Starts the periodic sweep. Idempotent. */
@@ -154,6 +182,17 @@ export class SettlementKeeper {
   async sweep(): Promise<SweepReport> {
     const startedAt = this.now();
     const entries: SweepEntry[] = [];
+
+    if (this.cursorStore !== undefined && this.cursor === 1n) {
+      try {
+        const persisted = await this.cursorStore.getCursor();
+        if (persisted !== undefined && persisted >= 1n) {
+          this.cursor = persisted;
+        }
+      } catch {
+        // Fall back to current cursor if reading store fails
+      }
+    }
 
     let count: bigint;
     try {
@@ -237,6 +276,9 @@ export class SettlementKeeper {
       id = id >= count ? 1n : id + 1n;
     }
     this.cursor = id;
+    if (this.cursorStore !== undefined) {
+      void this.cursorStore.setCursor(id);
+    }
     return ids;
   }
 
